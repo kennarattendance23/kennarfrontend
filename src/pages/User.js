@@ -14,12 +14,14 @@ function User() {
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  // Modal state
   const [showModal, setShowModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
+
+  // ✅ Use environment variable or fallback
+  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000/api/admins";
 
   useEffect(() => {
     fetchUsers();
@@ -27,7 +29,7 @@ function User() {
 
   const fetchUsers = () => {
     axios
-      .get('http://localhost:5000/api/admins')
+      .get(API_URL)
       .then((res) => setUsers(res.data))
       .catch((err) => console.error(err));
   };
@@ -40,7 +42,7 @@ function User() {
     }
 
     axios
-      .post('http://localhost:5000/api/admins', form)
+      .post(API_URL, form)
       .then((res) => {
         setUsers((prev) => [...prev, res.data]);
         setForm({ employee_id: '', admin_name: '', username: '', password: '' });
@@ -61,7 +63,7 @@ function User() {
   const deleteUser = () => {
     if (!selectedUser) return;
     axios
-      .delete(`http://localhost:5000/api/admins/${selectedUser.id}`)
+      .delete(`${API_URL}/${selectedUser.id}`)
       .then(() => {
         setUsers(users.filter((u) => u.id !== selectedUser.id));
         setShowModal(false);
@@ -230,7 +232,6 @@ function User() {
         </div>
       </div>
 
-      {/* Modal */}
       {showModal && selectedUser && (
         <div className="modal-overlay">
           <div className="modal-content">
