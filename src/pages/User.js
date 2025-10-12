@@ -21,7 +21,7 @@ function User() {
   const itemsPerPage = 5;
 
   // ✅ Use environment variable or fallback
-  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000/api/admins";
+  const API_URL = "https://kennarbackend.onrender.com/api/admins";
 
   useEffect(() => {
     fetchUsers();
