@@ -5,7 +5,7 @@ import axios from 'axios';
 import '../Dashboard.css';
 
 // ✅ Use the same base URL as your backend
-const API_BASE_URL = 'https://your-backend.onrender.com/api';
+const API_BASE_URL = 'https://kennarbackend.onrender.com/api';
 
 function Dashboard() {
   const [stats, setStats] = useState({
