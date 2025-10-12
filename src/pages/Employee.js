@@ -95,13 +95,11 @@ const Employee = () => {
   };
 
   const handleProceedRegistration = async (employeeId) => {
-    // Check employee ID
     if (!employeeId) {
       alert("Employee ID is required.");
       return;
     }
 
-    // Ensure all other fields are filled
     const requiredFields = ["name", "mobile_phone", "date_of_birth", "status"];
     for (let field of requiredFields) {
       if (!formData[field]) {
@@ -110,8 +108,8 @@ const Employee = () => {
       }
     }
 
-    // Only allow registration if face_embedding and fingerprint_id are blank
-    if (formData.face_embedding || formData.fingerprint_id) {
+    const employee = employees.find((emp) => emp.employee_id === employeeId);
+    if (employee && (employee.face_embedding || employee.fingerprint_id)) {
       alert("This employee is already registered.");
       return;
     }
