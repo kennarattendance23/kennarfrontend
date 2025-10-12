@@ -29,7 +29,7 @@ const Employee = () => {
   const employeesPerPage = 5;
 
   // ✅ Use environment variable if available, fallback to localhost
-  const API_BASE = process.env.REACT_APP_API_URL || "https://kennarbackend.onrender.com/api";
+  const API_BASE = process.env.REACT_APP_API_URL || "https://kennarbackend.onrender.com";
 
   const fetchEmployees = async () => {
     try {
