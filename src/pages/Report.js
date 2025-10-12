@@ -13,13 +13,16 @@ const Report = () => {
 
   const itemsPerPage = 5;
 
+  // ✅ Use Render backend URL
+  const API_URL = "https://kennarbackend.onrender.com/api/attendance";
+
   useEffect(() => {
     fetchLogs();
   }, []);
 
   const fetchLogs = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/attendance");
+      const res = await axios.get(API_URL);
       setLogs(res.data);
       setFilteredLogs(res.data);
     } catch (error) {
@@ -139,7 +142,7 @@ const Report = () => {
 
     try {
       await axios.put(
-        `http://localhost:5000/api/attendance/${updatedLogs[globalIndex].attendance_id}`,
+        `${API_URL}/${updatedLogs[globalIndex].attendance_id}`,
         { time_out: newTimeOut, working_hours: workingHours }
       );
 
