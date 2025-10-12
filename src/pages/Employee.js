@@ -116,7 +116,7 @@ const Employee = () => {
   const handleDelete = async () => {
     if (!employeeToDelete) return;
     try {
-      await axios.delete(`${API_BASE}/api/employees/${employeeToDelete.employee_id}`);
+      await axios.delete(`${API_BASE}/api/employees/${employeeToDelete.id}`);
       await fetchEmployees();
     } catch (err) {
       console.error("Error deleting employee:", err);
