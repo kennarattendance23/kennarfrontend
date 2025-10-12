@@ -17,7 +17,6 @@ const Employee = () => {
   });
 
   const [isRegistering, setIsRegistering] = useState(false);
-  const [isDone, setIsDone] = useState(false);
   const fileInputRef = useRef(null);
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -28,7 +27,6 @@ const Employee = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const employeesPerPage = 5;
 
-  // ✅ Use environment variable if available, fallback to localhost
   const API_BASE = process.env.REACT_APP_API_URL || "https://kennarbackend.onrender.com";
 
   const fetchEmployees = async () => {
@@ -64,9 +62,9 @@ const Employee = () => {
       face_embedding: "",
       fingerprint_id: "",
     });
-    setIsRegistering(false);
-    setIsDone(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
+    setShowUpdateModal(false);
+    setIsRegistering(false);
   };
 
   const handleSubmitConfirmed = async () => {
@@ -83,18 +81,54 @@ const Employee = () => {
 
       if (isEditing) {
         await axios.put(`${API_BASE}/api/employees/${formData.employee_id}`, form);
-        resetForm(); // Reset form after updating
       } else {
         await axios.post(`${API_BASE}/api/employees`, form);
-        setIsDone(true);
       }
 
+      resetForm();
       await fetchEmployees();
     } catch (err) {
       console.error("Error saving employee:", err);
     } finally {
       setIsRegistering(false);
-      setShowUpdateModal(false); // Close update modal
+    }
+  };
+
+  const handleProceedRegistration = async (employeeId) => {
+    // Check employee ID
+    if (!employeeId) {
+      alert("Employee ID is required.");
+      return;
+    }
+
+    // Ensure all other fields are filled
+    const requiredFields = ["name", "mobile_phone", "date_of_birth", "status"];
+    for (let field of requiredFields) {
+      if (!formData[field]) {
+        alert(`Please fill the ${field.replace("_", " ")} before proceeding.`);
+        return;
+      }
+    }
+
+    // Only allow registration if face_embedding and fingerprint_id are blank
+    if (formData.face_embedding || formData.fingerprint_id) {
+      alert("This employee is already registered.");
+      return;
+    }
+
+    setIsRegistering(true);
+
+    try {
+      const res = await axios.post(`${API_BASE}/api/register/${employeeId}`);
+      alert(res.data.message);
+
+      resetForm();
+      await fetchEmployees();
+    } catch (err) {
+      console.error("❌ Registration failed:", err);
+      alert("Failed to start registration on kiosk");
+    } finally {
+      setIsRegistering(false);
     }
   };
 
@@ -137,7 +171,6 @@ const Employee = () => {
   const totalPages =
     filteredEmployees.length === 0 ? 0 : Math.ceil(filteredEmployees.length / employeesPerPage);
 
-  // Updated useEffect with currentPage in dependencies
   useEffect(() => {
     if (filteredEmployees.length === 0) {
       setCurrentPage(1);
@@ -180,31 +213,19 @@ const Employee = () => {
         </div>
 
         <form className="employee-form" onSubmit={handleSubmit}>
+          {/* Input fields */}
           <div className="employee-form-group">
             <label>Employee ID</label>
-            <input
-              type="text"
-              name="employee_id"
-              value={formData.employee_id}
-              onChange={handleInputChange}
-            />
+            <input type="text" name="employee_id" value={formData.employee_id} onChange={handleInputChange} />
           </div>
-
           <div className="employee-form-group">
             <label>Name</label>
             <input type="text" name="name" value={formData.name} onChange={handleInputChange} />
           </div>
-
           <div className="employee-form-group">
             <label>Mobile Phone</label>
-            <input
-              type="text"
-              name="mobile_phone"
-              value={formData.mobile_phone}
-              onChange={handleInputChange}
-            />
+            <input type="text" name="mobile_phone" value={formData.mobile_phone} onChange={handleInputChange} />
           </div>
-
           <div className="employee-form-group">
             <label>Status</label>
             <select name="status" value={formData.status} onChange={handleInputChange}>
@@ -213,62 +234,43 @@ const Employee = () => {
               <option value="Inactive">Inactive</option>
             </select>
           </div>
-
           <div className="employee-form-group">
             <label>Image</label>
             <input type="file" name="image" onChange={handleInputChange} ref={fileInputRef} />
           </div>
-
           <div className="employee-form-group">
             <label>Date of Birth</label>
-            <input
-              type="date"
-              name="date_of_birth"
-              value={formData.date_of_birth}
-              onChange={handleInputChange}
-            />
+            <input type="date" name="date_of_birth" value={formData.date_of_birth} onChange={handleInputChange} />
           </div>
-
           <div className="employee-form-group">
             <label>Face Embedding</label>
-            <input
-              type="text"
-              name="face_embedding"
-              value={formData.face_embedding}
-              onChange={handleInputChange}
-              readOnly
-            />
+            <input type="text" name="face_embedding" value={formData.face_embedding} readOnly />
           </div>
-
           <div className="employee-form-group">
             <label>Fingerprint ID</label>
-            <input
-              type="text"
-              name="fingerprint_id"
-              value={formData.fingerprint_id}
-              onChange={handleInputChange}
-              readOnly
-            />
+            <input type="text" name="fingerprint_id" value={formData.fingerprint_id} readOnly />
           </div>
 
-          {/* ✅ Button logic unchanged */}
+          {/* Buttons */}
           <div className="employee-form-group button-group">
             {formData.employee_id && employees.some((emp) => emp.employee_id === formData.employee_id) ? (
               <button type="submit" className="update-button">
                 Update
               </button>
-            ) : isDone ? (
-              <button type="button" className="proceed-button" onClick={resetForm}>
-                Done
-              </button>
             ) : (
-              <button type="submit" className="proceed-button" disabled={isRegistering}>
+              <button
+                type="button"
+                className="proceed-button"
+                disabled={isRegistering}
+                onClick={() => handleProceedRegistration(formData.employee_id)}
+              >
                 {isRegistering ? "Registering..." : "Proceed"}
               </button>
             )}
           </div>
         </form>
 
+        {/* Employee Table */}
         <table className="employee-table">
           <thead>
             <tr>
@@ -286,13 +288,7 @@ const Employee = () => {
               currentEmployees.map((emp) => (
                 <tr key={emp.employee_id}>
                   <td>{emp.employee_id}</td>
-                  <td>
-                    {emp.image ? (
-                      <img src={`${API_BASE}/uploads/${emp.image}`} alt="employee" width="50" />
-                    ) : (
-                      "No Image"
-                    )}
-                  </td>
+                  <td>{emp.image ? <img src={`${API_BASE}/uploads/${emp.image}`} alt="employee" width="50" /> : "No Image"}</td>
                   <td>{emp.name}</td>
                   <td>{emp.date_of_birth ? new Date(emp.date_of_birth).toLocaleDateString("en-CA") : "N/A"}</td>
                   <td>{emp.mobile_phone}</td>
@@ -305,9 +301,7 @@ const Employee = () => {
                           employee_id: emp.employee_id,
                           name: emp.name,
                           mobile_phone: emp.mobile_phone,
-                          date_of_birth: emp.date_of_birth
-                            ? new Date(emp.date_of_birth).toISOString().split("T")[0]
-                            : "",
+                          date_of_birth: emp.date_of_birth ? new Date(emp.date_of_birth).toISOString().split("T")[0] : "",
                           status: emp.status,
                           image: null,
                           face_embedding: emp.face_embedding || "",
@@ -332,29 +326,23 @@ const Employee = () => {
           </tbody>
         </table>
 
+        {/* Pagination */}
         <div className="pagination">
           <div className="pagination-info">
             {filteredEmployees.length === 0 ? "Showing 0 of 0" : `Showing ${currentPage} of ${totalPages}`}
           </div>
           <div className="pagination-controls">
-            <button
-              className="pagination-btn"
-              onClick={handlePrevPage}
-              disabled={filteredEmployees.length === 0 || currentPage === 1}
-            >
+            <button className="pagination-btn" onClick={handlePrevPage} disabled={filteredEmployees.length === 0 || currentPage === 1}>
               Previous
             </button>
             <span className="pagination-page">{filteredEmployees.length === 0 ? 0 : currentPage}</span>
-            <button
-              className="pagination-btn"
-              onClick={handleNextPage}
-              disabled={filteredEmployees.length === 0 || currentPage === totalPages}
-            >
+            <button className="pagination-btn" onClick={handleNextPage} disabled={filteredEmployees.length === 0 || currentPage === totalPages}>
               Next
             </button>
           </div>
         </div>
 
+        {/* Modals */}
         {showUpdateModal && (
           <div className="modal-overlay">
             <div className="modal-content">
