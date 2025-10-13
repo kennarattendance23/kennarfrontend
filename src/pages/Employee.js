@@ -1,3 +1,4 @@
+// === Employee.js ===
 import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import "../Employee.css";
@@ -16,7 +17,7 @@ const Employee = () => {
     fingerprint_id: "",
   });
 
-  const [isRegistering, setIsRegistering] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const fileInputRef = useRef(null);
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -64,11 +65,11 @@ const Employee = () => {
     });
     if (fileInputRef.current) fileInputRef.current.value = "";
     setShowUpdateModal(false);
-    setIsRegistering(false);
+    setIsSaving(false);
   };
 
   const handleSubmitConfirmed = async () => {
-    setIsRegistering(true);
+    setIsSaving(true);
     try {
       const form = new FormData();
       Object.keys(formData).forEach((key) => {
@@ -90,45 +91,7 @@ const Employee = () => {
     } catch (err) {
       console.error("Error saving employee:", err);
     } finally {
-      setIsRegistering(false);
-    }
-  };
-
-  // ✅ Trigger kiosk registration
-  const handleProceedRegistration = async (employeeId) => {
-    if (!employeeId) {
-      alert("Employee ID is required.");
-      return;
-    }
-
-    const requiredFields = ["name", "mobile_phone", "date_of_birth", "status"];
-    for (let field of requiredFields) {
-      if (!formData[field]) {
-        alert(`Please fill the ${field.replace("_", " ")} before proceeding.`);
-        return;
-      }
-    }
-
-    const employee = employees.find((emp) => emp.employee_id === employeeId);
-    if (employee && (employee.face_embedding || employee.fingerprint_id)) {
-      alert("This employee is already registered.");
-      return;
-    }
-
-    setIsRegistering(true);
-
-    try {
-      // ✅ Correct POST to Flask endpoint
-      const res = await axios.post(`${API_BASE}/api/register`, { employee_id: employeeId });
-      alert(res.data.message);
-
-      resetForm();
-      await fetchEmployees();
-    } catch (err) {
-      console.error("❌ Registration failed:", err);
-      alert("Failed to start registration on kiosk");
-    } finally {
-      setIsRegistering(false);
+      setIsSaving(false);
     }
   };
 
@@ -251,22 +214,11 @@ const Employee = () => {
             <input type="text" name="fingerprint_id" value={formData.fingerprint_id} readOnly />
           </div>
 
-          {/* Buttons */}
+          {/* Save Button only */}
           <div className="employee-form-group button-group">
-            {formData.employee_id && employees.some((emp) => emp.employee_id === formData.employee_id) ? (
-              <button type="submit" className="update-button">
-                Update
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="proceed-button"
-                disabled={isRegistering}
-                onClick={() => handleProceedRegistration(formData.employee_id)}
-              >
-                {isRegistering ? "Registering..." : "Proceed"}
-              </button>
-            )}
+            <button type="submit" className="save-button" disabled={isSaving}>
+              {isSaving ? "Saving..." : "Save"}
+            </button>
           </div>
         </form>
 
@@ -352,7 +304,7 @@ const Employee = () => {
                 <button className="cancel-button" onClick={() => setShowUpdateModal(false)}>
                   Cancel
                 </button>
-                <button className="update-button" onClick={handleSubmitConfirmed}>
+                <button className="save-button" onClick={handleSubmitConfirmed}>
                   Save
                 </button>
               </div>
