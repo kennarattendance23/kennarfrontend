@@ -94,6 +94,7 @@ const Employee = () => {
     }
   };
 
+  // ✅ Trigger kiosk registration
   const handleProceedRegistration = async (employeeId) => {
     if (!employeeId) {
       alert("Employee ID is required.");
@@ -117,7 +118,8 @@ const Employee = () => {
     setIsRegistering(true);
 
     try {
-      const res = await axios.post(`${API_BASE}/api/register/${employeeId}`);
+      // ✅ Correct POST to Flask endpoint
+      const res = await axios.post(`${API_BASE}/api/register`, { employee_id: employeeId });
       alert(res.data.message);
 
       resetForm();
