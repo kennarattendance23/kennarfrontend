@@ -62,15 +62,13 @@ function Login({ onLoginChange }) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
-            {password && (
-              <button
-                type="button"
-                className="toggle-password-login"
-                onClick={() => setShowPassword(!showPassword)}
-              >
-                <i className={`fa-solid ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
-              </button>
-            )}
+            <button
+              type="button"
+              className="toggle-password-login"
+              onClick={() => setShowPassword(!showPassword)}
+            >
+              <i className={`fa-solid ${showPassword ? 'fa-eye' : 'fa-eye-slash'}`}></i>
+            </button>
           </div>
 
           <button type="submit" className="login-btn">Login</button>
@@ -83,3 +81,4 @@ function Login({ onLoginChange }) {
 }
 
 export default Login;
+
