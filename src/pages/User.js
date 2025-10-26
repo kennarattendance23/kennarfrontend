@@ -20,7 +20,6 @@ function User() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
-  // ✅ Use environment variable or fallback
   const API_URL = "https://kennarbackend.onrender.com/api/admins";
 
   useEffect(() => {
@@ -133,6 +132,7 @@ function User() {
               />
             </div>
 
+            {/* ✅ Password Field with Eye Toggle */}
             <div className="form-group password-group">
               <label>Password</label>
               <div className="password-input-wrapper">
@@ -152,7 +152,7 @@ function User() {
                   >
                     <i
                       className={`fa-solid ${
-                        showPassword ? 'fa-eye-slash' : 'fa-eye'
+                        showPassword ? 'fa-eye' : 'fa-eye-slash'
                       }`}
                     ></i>
                   </button>
@@ -208,7 +208,8 @@ function User() {
         <div className="user-pagination">
           <div className="user-pagination-info">
             {filteredUsers.length === 0
-              ? 'Showing 0 of 0' : `Showing ${currentPage} of ${totalPages}`}
+              ? 'Showing 0 of 0'
+              : `Showing ${currentPage} of ${totalPages}`}
           </div>
           <button
             className="pagination-btn"
@@ -221,9 +222,7 @@ function User() {
           <button
             className="pagination-btn"
             onClick={() =>
-              setCurrentPage((prev) =>
-                Math.min(prev + 1, totalPages)
-              )
+              setCurrentPage((prev) => Math.min(prev + 1, totalPages))
             }
             disabled={currentPage === totalPages || totalPages === 0}
           >
@@ -237,7 +236,8 @@ function User() {
           <div className="modal-content">
             <h3>Confirm Delete</h3>
             <p>
-              Are you sure you want to delete <strong>{selectedUser.admin_name}</strong>?
+              Are you sure you want to delete{' '}
+              <strong>{selectedUser.admin_name}</strong>?
             </p>
             <div className="modal-actions">
               <button
