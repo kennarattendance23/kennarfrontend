@@ -8,12 +8,11 @@ const Report = () => {
   const [toDate, setToDate] = useState("");
   const [filteredLogs, setFilteredLogs] = useState([]);
   const [editingIndex, setEditingIndex] = useState(null);
+  const [newTimeIn, setNewTimeIn] = useState("");
   const [newTimeOut, setNewTimeOut] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
   const itemsPerPage = 5;
-
-  // ✅ Use Render backend URL
   const API_URL = "https://kennarbackend.onrender.com/api/attendance";
 
   useEffect(() => {
@@ -64,7 +63,6 @@ const Report = () => {
             th, td { border: 1px solid #000; padding: 8px; }
             th { background: #59a5f0; }
             td { background: #b3d9ff; }
-            .no-print { display: none !important; }
           </style>
         </head>
         <body>
@@ -111,24 +109,25 @@ const Report = () => {
 
   const handleEditClick = (index) => {
     setEditingIndex(index);
+    setNewTimeIn(currentItems[index].time_in || "");
     setNewTimeOut(currentItems[index].time_out || "");
   };
 
   const handleCancelClick = () => {
     setEditingIndex(null);
+    setNewTimeIn("");
     setNewTimeOut("");
   };
 
   const handleSaveClick = async (index) => {
     const updatedLogs = [...filteredLogs];
     const globalIndex = indexOfFirstItem + index;
+    updatedLogs[globalIndex].time_in = newTimeIn;
     updatedLogs[globalIndex].time_out = newTimeOut;
 
-    const timeIn = updatedLogs[globalIndex].time_in;
     let workingHours = null;
-
-    if (timeIn && newTimeOut) {
-      const [inH, inM] = timeIn.split(":").map(Number);
+    if (newTimeIn && newTimeOut) {
+      const [inH, inM] = newTimeIn.split(":").map(Number);
       const [outH, outM] = newTimeOut.split(":").map(Number);
       let hours = outH - inH;
       let minutes = outM - inM;
@@ -143,11 +142,16 @@ const Report = () => {
     try {
       await axios.put(
         `${API_URL}/${updatedLogs[globalIndex].attendance_id}`,
-        { time_out: newTimeOut, working_hours: workingHours }
+        {
+          time_in: newTimeIn,
+          time_out: newTimeOut,
+          working_hours: workingHours,
+        }
       );
 
       setFilteredLogs(updatedLogs);
       setEditingIndex(null);
+      setNewTimeIn("");
       setNewTimeOut("");
     } catch (error) {
       console.error("❌ Failed to save changes:", error);
@@ -207,7 +211,20 @@ const Report = () => {
                   <td>{log.fullname}</td>
                   <td>{log.temperature || "-"}</td>
                   <td>{log.status || "-"}</td>
-                  <td>{log.time_in ? log.time_in.slice(0, 5) : "-"}</td>
+                  <td>
+                    {editingIndex === idx ? (
+                      <input
+                        type="time"
+                        value={newTimeIn}
+                        onChange={(e) => setNewTimeIn(e.target.value)}
+                        step="60"
+                      />
+                    ) : log.time_in ? (
+                      log.time_in.slice(0, 5)
+                    ) : (
+                      "-"
+                    )}
+                  </td>
                   <td>
                     {editingIndex === idx ? (
                       <input
