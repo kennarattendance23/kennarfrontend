@@ -217,13 +217,9 @@ const Employee = () => {
             <input type="text" name="name" value={formData.name} onChange={handleInputChange} />
           </div>
           <div className="employee-form-group">
-            <label>Mobile Phone</label>
-            <input type="text" name="mobile_phone" value={formData.mobile_phone} onChange={handleInputChange} />
-          </div>
-          <div className="employee-form-group">
             <label>Status</label>
             <select name="status" value={formData.status} onChange={handleInputChange}>
-              <option value="">Select Status</option>
+              <option value="">Select status</option>
               <option value="Active">Active</option>
               <option value="Inactive">Inactive</option>
             </select>
