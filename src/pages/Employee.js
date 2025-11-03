@@ -279,8 +279,6 @@ const Employee = () => {
                   <td>
                     {employeeImages[emp.employee_id] ? (
                       <img src={employeeImages[emp.employee_id]} alt="employee" width="50" />
-                    ) : emp.image ? (
-                      <img src={`${API_BASE}/uploads/${emp.image}`} alt="employee" width="50" />
                     ) : (
                       "No Image"
                     )}
