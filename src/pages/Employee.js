@@ -1,3 +1,4 @@
+// === Employee.js ===
 import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import "../Employee.css";
@@ -16,31 +17,57 @@ const Employee = () => {
     fingerprint_id: "",
   });
 
-  const [isRegistering, setIsRegistering] = useState(false);
-  const [isDone, setIsDone] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const fileInputRef = useRef(null);
-
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [employeeToDelete, setEmployeeToDelete] = useState(null);
-
   const [showUpdateModal, setShowUpdateModal] = useState(false);
-
   const [currentPage, setCurrentPage] = useState(1);
   const employeesPerPage = 5;
 
+  // ✅ Store base64 employee images
+  const [employeeImages, setEmployeeImages] = useState({});
+
+  const API_BASE = process.env.REACT_APP_API_URL || "https://kennarbackend.onrender.com";
+
+  // === Fetch all employees ===
   const fetchEmployees = async () => {
     try {
-  const res = await axios.get("https://kennarbackend.onrender.com/api/employees");
+      const res = await axios.get(`${API_BASE}/api/employees`);
       setEmployees(res.data);
+
+      // ✅ Fetch each employee’s image by employee_id
+      res.data.forEach((emp) => fetchEmployeeImage(emp.employee_id));
     } catch (err) {
       console.error("Error fetching employees:", err);
     }
+  };
+
+  // === Fetch employee image (base64) ===
+  const fetchEmployeeImage = (employee_id) => {
+    fetch(`${API_BASE}/api/employees/${employee_id}/image`)
+      .then((res) => (res.ok ? res.json() : Promise.resolve({})))
+      .then((data) => {
+        if (data.base64) {
+          setEmployeeImages((prev) => ({
+            ...prev,
+            [employee_id]: `data:image/jpeg;base64,${data.base64}`,
+          }));
+        } else {
+          setEmployeeImages((prev) => ({ ...prev, [employee_id]: "" }));
+        }
+      })
+      .catch((err) => {
+        console.error("Error fetching employee image:", err);
+        setEmployeeImages((prev) => ({ ...prev, [employee_id]: "" }));
+      });
   };
 
   useEffect(() => {
     fetchEmployees();
   }, []);
 
+  // === Handle input changes ===
   const handleInputChange = (e) => {
     const { name, value, files } = e.target;
     if (name === "image") {
@@ -61,13 +88,14 @@ const Employee = () => {
       face_embedding: "",
       fingerprint_id: "",
     });
-    setIsRegistering(false);
-    setIsDone(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
+    setShowUpdateModal(false);
+    setIsSaving(false);
   };
 
+  // === Handle Save / Update ===
   const handleSubmitConfirmed = async () => {
-    setIsRegistering(true);
+    setIsSaving(true);
     try {
       const form = new FormData();
       Object.keys(formData).forEach((key) => {
@@ -79,28 +107,24 @@ const Employee = () => {
       const isEditing = employees.some((emp) => emp.employee_id === formData.employee_id);
 
       if (isEditing) {
-        await axios.put(
-          `https://kennarbackend.onrender.com/api/employees/${formData.employee_id}`,
-          form
-        );
-        resetForm(); // Reset form after updating
+        await axios.put(`${API_BASE}/api/employees/${formData.employee_id}`, form);
       } else {
-        await axios.post("https://kennarbackend.onrender.com/api/employees", form);
-        setIsDone(true);
+        await axios.post(`${API_BASE}/api/employees`, form);
       }
 
+      resetForm();
       await fetchEmployees();
     } catch (err) {
       console.error("Error saving employee:", err);
     } finally {
-      setIsRegistering(false);
-      setShowUpdateModal(false); // Close update modal
+      setIsSaving(false);
     }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const isEditing = formData.employee_id && employees.some((emp) => emp.employee_id === formData.employee_id);
+    const isEditing =
+      formData.employee_id && employees.some((emp) => emp.employee_id === formData.employee_id);
     if (isEditing) {
       setShowUpdateModal(true);
     } else {
@@ -108,6 +132,7 @@ const Employee = () => {
     }
   };
 
+  // === Delete ===
   const confirmDelete = (emp) => {
     setEmployeeToDelete(emp);
     setShowDeleteModal(true);
@@ -116,7 +141,7 @@ const Employee = () => {
   const handleDelete = async () => {
     if (!employeeToDelete) return;
     try {
-  await axios.delete(`https://kennarbackend.onrender.com/api/employees/${employeeToDelete.employee_id}`);
+      await axios.delete(`${API_BASE}/api/employees/${employeeToDelete.employee_id}`);
       await fetchEmployees();
     } catch (err) {
       console.error("Error deleting employee:", err);
@@ -126,6 +151,7 @@ const Employee = () => {
     }
   };
 
+  // === Search and pagination ===
   const filteredEmployees = employees.filter(
     (emp) =>
       emp.employee_id?.toString().toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -137,7 +163,6 @@ const Employee = () => {
   const totalPages =
     filteredEmployees.length === 0 ? 0 : Math.ceil(filteredEmployees.length / employeesPerPage);
 
-  // Updated useEffect with currentPage in dependencies
   useEffect(() => {
     if (filteredEmployees.length === 0) {
       setCurrentPage(1);
@@ -162,11 +187,13 @@ const Employee = () => {
     if (currentPage > 1) setCurrentPage((p) => p - 1);
   };
 
+  // === Render ===
   return (
     <div className="employee-scroll" id="employeeScroll">
       <div className="employee-container">
         <h3 className="employee-header">Employee Management</h3>
 
+        {/* Search bar */}
         <div className="employee-search">
           <input
             type="text"
@@ -179,32 +206,20 @@ const Employee = () => {
           />
         </div>
 
+        {/* Employee form */}
         <form className="employee-form" onSubmit={handleSubmit}>
           <div className="employee-form-group">
             <label>Employee ID</label>
-            <input
-              type="text"
-              name="employee_id"
-              value={formData.employee_id}
-              onChange={handleInputChange}
-            />
+            <input type="text" name="employee_id" value={formData.employee_id} onChange={handleInputChange} />
           </div>
-
           <div className="employee-form-group">
             <label>Name</label>
             <input type="text" name="name" value={formData.name} onChange={handleInputChange} />
           </div>
-
           <div className="employee-form-group">
             <label>Mobile Phone</label>
-            <input
-              type="text"
-              name="mobile_phone"
-              value={formData.mobile_phone}
-              onChange={handleInputChange}
-            />
+            <input type="text" name="mobile_phone" value={formData.mobile_phone} onChange={handleInputChange} />
           </div>
-
           <div className="employee-form-group">
             <label>Status</label>
             <select name="status" value={formData.status} onChange={handleInputChange}>
@@ -213,62 +228,31 @@ const Employee = () => {
               <option value="Inactive">Inactive</option>
             </select>
           </div>
-
           <div className="employee-form-group">
             <label>Image</label>
             <input type="file" name="image" onChange={handleInputChange} ref={fileInputRef} />
           </div>
-
           <div className="employee-form-group">
             <label>Date of Birth</label>
-            <input
-              type="date"
-              name="date_of_birth"
-              value={formData.date_of_birth}
-              onChange={handleInputChange}
-            />
+            <input type="date" name="date_of_birth" value={formData.date_of_birth} onChange={handleInputChange} />
           </div>
-
           <div className="employee-form-group">
             <label>Face Embedding</label>
-            <input
-              type="text"
-              name="face_embedding"
-              value={formData.face_embedding}
-              onChange={handleInputChange}
-              readOnly
-            />
+            <input type="text" name="face_embedding" value={formData.face_embedding} readOnly />
           </div>
-
           <div className="employee-form-group">
             <label>Fingerprint ID</label>
-            <input
-              type="text"
-              name="fingerprint_id"
-              value={formData.fingerprint_id}
-              onChange={handleInputChange}
-              readOnly
-            />
+            <input type="text" name="fingerprint_id" value={formData.fingerprint_id} readOnly />
           </div>
 
-          {/* ✅ Moved button into full-width group */}
           <div className="employee-form-group button-group">
-            {formData.employee_id && employees.some((emp) => emp.employee_id === formData.employee_id) ? (
-              <button type="submit" className="update-button">
-                Update
-              </button>
-            ) : isDone ? (
-              <button type="button" className="proceed-button" onClick={resetForm}>
-                Done
-              </button>
-            ) : (
-              <button type="submit" className="proceed-button" disabled={isRegistering}>
-                {isRegistering ? "Registering..." : "Proceed"}
-              </button>
-            )}
+            <button type="submit" className="save-button" disabled={isSaving}>
+              {isSaving ? "Saving..." : "Save"}
+            </button>
           </div>
         </form>
 
+        {/* Employee table */}
         <table className="employee-table">
           <thead>
             <tr>
@@ -287,8 +271,10 @@ const Employee = () => {
                 <tr key={emp.employee_id}>
                   <td>{emp.employee_id}</td>
                   <td>
-                    {emp.image ? (
-                      <img src={`https://kennarbackend.onrender.com/uploads/${emp.image}`} alt="employee" width="50" />
+                    {employeeImages[emp.employee_id] ? (
+                      <img src={employeeImages[emp.employee_id]} alt="employee" width="50" />
+                    ) : emp.image ? (
+                      <img src={`${API_BASE}/uploads/${emp.image}`} alt="employee" width="50" />
                     ) : (
                       "No Image"
                     )}
@@ -332,9 +318,12 @@ const Employee = () => {
           </tbody>
         </table>
 
+        {/* Pagination */}
         <div className="pagination">
           <div className="pagination-info">
-            {filteredEmployees.length === 0 ? "Showing 0 of 0" : `Showing ${currentPage} of ${totalPages}`}
+            {filteredEmployees.length === 0
+              ? "Showing 0 of 0"
+              : `Showing ${currentPage} of ${totalPages}`}
           </div>
           <div className="pagination-controls">
             <button
@@ -355,6 +344,7 @@ const Employee = () => {
           </div>
         </div>
 
+        {/* Update Modal */}
         {showUpdateModal && (
           <div className="modal-overlay">
             <div className="modal-content">
@@ -364,7 +354,7 @@ const Employee = () => {
                 <button className="cancel-button" onClick={() => setShowUpdateModal(false)}>
                   Cancel
                 </button>
-                <button className="update-button" onClick={handleSubmitConfirmed}>
+                <button className="save-button" onClick={handleSubmitConfirmed}>
                   Save
                 </button>
               </div>
@@ -372,6 +362,7 @@ const Employee = () => {
           </div>
         )}
 
+        {/* Delete Modal */}
         {showDeleteModal && (
           <div className="modal-overlay">
             <div className="modal-content">
