@@ -112,6 +112,9 @@ const Employee = () => {
         await axios.post(`${API_BASE}/api/employees`, form);
       }
 
+      // Fetch image for the employee after upload/update
+      fetchEmployeeImage(formData.employee_id);
+
       resetForm();
       await fetchEmployees();
     } catch (err) {
