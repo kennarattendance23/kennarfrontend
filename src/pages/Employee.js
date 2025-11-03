@@ -217,9 +217,13 @@ const Employee = () => {
             <input type="text" name="name" value={formData.name} onChange={handleInputChange} />
           </div>
           <div className="employee-form-group">
+            <label>Mobile Phone</label>
+            <input type="text" name="mobile_phone" value={formData.mobile_phone} onChange={handleInputChange} />
+          </div>
+          <div className="employee-form-group">
             <label>Status</label>
             <select name="status" value={formData.status} onChange={handleInputChange}>
-              <option value="">Select status</option>
+              <option value="">Select Status</option>
               <option value="Active">Active</option>
               <option value="Inactive">Inactive</option>
             </select>
@@ -269,8 +273,6 @@ const Employee = () => {
                   <td>
                     {employeeImages[emp.employee_id] ? (
                       <img src={employeeImages[emp.employee_id]} alt="employee" width="50" />
-                    ) : emp.image ? (
-                      <img src={`${API_BASE}/uploads/${emp.image}`} alt="employee" width="50" />
                     ) : (
                       "No Image"
                     )}
