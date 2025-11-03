@@ -41,7 +41,7 @@ const Employee = () => {
         if (data.base64) {
           setEmployeeImages((prev) => ({
             ...prev,
-            [employee_id]: `data:image/jpeg;base64,${data.base64}`,
+            [employee_id]: data.base64,
           }));
         } else {
           setEmployeeImages((prev) => ({ ...prev, [employee_id]: "" }));
