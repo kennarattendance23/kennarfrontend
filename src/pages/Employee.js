@@ -1,5 +1,5 @@
+import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
-import { useState, useEffect, useRef } from "react";
 import "../Employee.css";
 
 const Employee = () => {
@@ -29,39 +29,10 @@ const Employee = () => {
 
   const API_BASE = process.env.REACT_APP_API_URL || "https://kennarbackend.onrender.com";
 
-  // Store employee images as base64 (prefixed for img src)
-  const [employeeImages, setEmployeeImages] = useState({});
-
-  // Fetch employee image as base64 from backend
-  const fetchEmployeeImage = async (employee_id) => {
-    try {
-      const res = await fetch(`${API_BASE}/api/employees/${employee_id}/image`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.base64) {
-          setEmployeeImages((prev) => ({
-            ...prev,
-            [employee_id]: data.base64,
-          }));
-        } else {
-          setEmployeeImages((prev) => ({ ...prev, [employee_id]: "" }));
-        }
-      } else {
-        setEmployeeImages((prev) => ({ ...prev, [employee_id]: "" }));
-      }
-    } catch (err) {
-      console.error("Error fetching employee image:", err);
-      setEmployeeImages((prev) => ({ ...prev, [employee_id]: "" }));
-    }
-  };
-
   const fetchEmployees = async () => {
     try {
       const res = await axios.get(`${API_BASE}/api/employees`);
-      setEmployees(res.data || []);
-      (res.data || []).forEach((emp) => {
-        if (emp && emp.employee_id) fetchEmployeeImage(emp.employee_id);
-      });
+      setEmployees(res.data);
     } catch (err) {
       console.error("Error fetching employees:", err);
     }
@@ -69,13 +40,12 @@ const Employee = () => {
 
   useEffect(() => {
     fetchEmployees();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleInputChange = (e) => {
     const { name, value, files } = e.target;
     if (name === "image") {
-      setFormData((prev) => ({ ...prev, image: files && files[0] ? files[0] : null }));
+      setFormData((prev) => ({ ...prev, image: files[0] }));
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
@@ -102,22 +72,17 @@ const Employee = () => {
     try {
       const form = new FormData();
       Object.keys(formData).forEach((key) => {
-        const value = formData[key];
-        if (value !== null && value !== undefined && value !== "") {
-          form.append(key, value);
+        if (formData[key] !== null && formData[key] !== undefined) {
+          form.append(key, formData[key]);
         }
       });
 
       const isEditing = employees.some((emp) => emp.employee_id === formData.employee_id);
 
       if (isEditing) {
-        await axios.put(`${API_BASE}/api/employees/${formData.employee_id}`, form, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
+        await axios.put(`${API_BASE}/api/employees/${formData.employee_id}`, form);
       } else {
-        await axios.post(`${API_BASE}/api/employees`, form, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
+        await axios.post(`${API_BASE}/api/employees`, form);
       }
 
       resetForm();
@@ -131,8 +96,7 @@ const Employee = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const isEditing =
-      formData.employee_id && employees.some((emp) => emp.employee_id === formData.employee_id);
+    const isEditing = formData.employee_id && employees.some((emp) => emp.employee_id === formData.employee_id);
     if (isEditing) {
       setShowUpdateModal(true);
     } else {
@@ -148,7 +112,7 @@ const Employee = () => {
   const handleDelete = async () => {
     if (!employeeToDelete) return;
     try {
-      await axios.delete(`${API_BASE}/api/employees/${employeeToDelete.employee_id}`);
+      await axios.delete(`${API_BASE}/api/employees/${employeeToDelete.id}`);
       await fetchEmployees();
     } catch (err) {
       console.error("Error deleting employee:", err);
@@ -176,8 +140,7 @@ const Employee = () => {
       const pages = Math.ceil(filteredEmployees.length / employeesPerPage);
       if (currentPage > pages) setCurrentPage(pages);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filteredEmployees.length, employeesPerPage]);
+  }, [filteredEmployees.length, employeesPerPage, currentPage]);
 
   const indexOfLastEmployee = currentPage * employeesPerPage;
   const indexOfFirstEmployee = indexOfLastEmployee - employeesPerPage;
@@ -199,7 +162,6 @@ const Employee = () => {
       <div className="employee-container">
         <h3 className="employee-header">Employee Management</h3>
 
-        {/* Search bar */}
         <div className="employee-search">
           <input
             type="text"
@@ -212,8 +174,8 @@ const Employee = () => {
           />
         </div>
 
-        {/* Employee form */}
         <form className="employee-form" onSubmit={handleSubmit}>
+          {/* Input fields */}
           <div className="employee-form-group">
             <label>Employee ID</label>
             <input type="text" name="employee_id" value={formData.employee_id} onChange={handleInputChange} />
@@ -251,6 +213,7 @@ const Employee = () => {
             <input type="text" name="fingerprint_id" value={formData.fingerprint_id} readOnly />
           </div>
 
+          {/* Save Button only */}
           <div className="employee-form-group button-group">
             <button type="submit" className="save-button" disabled={isSaving}>
               {isSaving ? "Saving..." : "Save"}
@@ -258,7 +221,7 @@ const Employee = () => {
           </div>
         </form>
 
-        {/* Employee table */}
+        {/* Employee Table */}
         <table className="employee-table">
           <thead>
             <tr>
@@ -276,13 +239,7 @@ const Employee = () => {
               currentEmployees.map((emp) => (
                 <tr key={emp.employee_id}>
                   <td>{emp.employee_id}</td>
-                  <td>
-                    {employeeImages[emp.employee_id] ? (
-                      <img src={employeeImages[emp.employee_id]} alt="employee" width="50" />
-                    ) : (
-                      "No Image"
-                    )}
-                  </td>
+                  <td>{emp.image ? <img src={`${API_BASE}/uploads/${emp.image}`} alt="employee" width="50" /> : "No Image"}</td>
                   <td>{emp.name}</td>
                   <td>{emp.date_of_birth ? new Date(emp.date_of_birth).toLocaleDateString("en-CA") : "N/A"}</td>
                   <td>{emp.mobile_phone}</td>
@@ -295,9 +252,7 @@ const Employee = () => {
                           employee_id: emp.employee_id,
                           name: emp.name,
                           mobile_phone: emp.mobile_phone,
-                          date_of_birth: emp.date_of_birth
-                            ? new Date(emp.date_of_birth).toISOString().split("T")[0]
-                            : "",
+                          date_of_birth: emp.date_of_birth ? new Date(emp.date_of_birth).toISOString().split("T")[0] : "",
                           status: emp.status,
                           image: null,
                           face_embedding: emp.face_embedding || "",
@@ -325,30 +280,20 @@ const Employee = () => {
         {/* Pagination */}
         <div className="pagination">
           <div className="pagination-info">
-            {filteredEmployees.length === 0
-              ? "Showing 0 of 0"
-              : `Showing ${currentPage} of ${totalPages}`}
+            {filteredEmployees.length === 0 ? "Showing 0 of 0" : `Showing ${currentPage} of ${totalPages}`}
           </div>
           <div className="pagination-controls">
-            <button
-              className="pagination-btn"
-              onClick={handlePrevPage}
-              disabled={filteredEmployees.length === 0 || currentPage === 1}
-            >
+            <button className="pagination-btn" onClick={handlePrevPage} disabled={filteredEmployees.length === 0 || currentPage === 1}>
               Previous
             </button>
             <span className="pagination-page">{filteredEmployees.length === 0 ? 0 : currentPage}</span>
-            <button
-              className="pagination-btn"
-              onClick={handleNextPage}
-              disabled={filteredEmployees.length === 0 || currentPage === totalPages}
-            >
+            <button className="pagination-btn" onClick={handleNextPage} disabled={filteredEmployees.length === 0 || currentPage === totalPages}>
               Next
             </button>
           </div>
         </div>
 
-        {/* Update */}
+        {/* Modals */}
         {showUpdateModal && (
           <div className="modal-overlay">
             <div className="modal-content">
@@ -366,7 +311,6 @@ const Employee = () => {
           </div>
         )}
 
-        {/* Delete */}
         {showDeleteModal && (
           <div className="modal-overlay">
             <div className="modal-content">
@@ -388,6 +332,6 @@ const Employee = () => {
       </div>
     </div>
   );
-}
+};
 
 export default Employee;
