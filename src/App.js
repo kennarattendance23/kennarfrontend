@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from 'react-router-dom';
 
-import Sidebar from './components/Sidebar';
+import Sidebar from './pages/Sidebar';
 import Employee from './pages/Employee';
 import Dashboard from './pages/Dashboard';
 import User from './pages/User';
