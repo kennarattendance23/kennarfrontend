@@ -51,7 +51,7 @@ const Employee = () => {
         if (data.base64) {
           setEmployeeImages((prev) => ({
             ...prev,
-            [employee_id]: data.base64,
+            [employee_id]: `data:image/jpeg;base64,${data.base64}`,
           }));
         } else {
           setEmployeeImages((prev) => ({ ...prev, [employee_id]: "" }));
@@ -111,11 +111,6 @@ const Employee = () => {
       } else {
         await axios.post(`${API_BASE}/api/employees`, form);
       }
-
-      // Add a short delay before fetching the image to ensure DB update
-      setTimeout(() => {
-        fetchEmployeeImage(formData.employee_id);
-      }, 500); // 500ms delay
 
       resetForm();
       await fetchEmployees();
@@ -278,6 +273,8 @@ const Employee = () => {
                   <td>
                     {employeeImages[emp.employee_id] ? (
                       <img src={employeeImages[emp.employee_id]} alt="employee" width="50" />
+                    ) : emp.image ? (
+                      <img src={`${API_BASE}/uploads/${emp.image}`} alt="employee" width="50" />
                     ) : (
                       "No Image"
                     )}
