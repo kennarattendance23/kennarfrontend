@@ -112,8 +112,10 @@ const Employee = () => {
         await axios.post(`${API_BASE}/api/employees`, form);
       }
 
-      // Fetch image for the employee after upload/update
-      fetchEmployeeImage(formData.employee_id);
+      // Add a short delay before fetching the image to ensure DB update
+      setTimeout(() => {
+        fetchEmployeeImage(formData.employee_id);
+      }, 500); // 500ms delay
 
       resetForm();
       await fetchEmployees();
