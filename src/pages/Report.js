@@ -120,10 +120,9 @@ const Report = () => {
   };
 
   const handleSaveClick = async (index) => {
-    const updatedLogs = [...filteredLogs];
     const globalIndex = indexOfFirstItem + index;
-    updatedLogs[globalIndex].time_in = newTimeIn;
-    updatedLogs[globalIndex].time_out = newTimeOut;
+    const record = filteredLogs[globalIndex];
+    const attendanceId = record.attendance_id;
 
     let workingHours = null;
     if (newTimeIn && newTimeOut) {
@@ -136,20 +135,26 @@ const Report = () => {
         minutes += 60;
       }
       workingHours = (hours + minutes / 60).toFixed(2);
-      updatedLogs[globalIndex].working_hours = workingHours;
     }
 
     try {
-      await axios.put(
-        `${API_URL}/${updatedLogs[globalIndex].attendance_id}`,
-        {
+      // ✅ 1. If time_in changed → update via /time-in route
+      if (newTimeIn !== record.time_in) {
+        await axios.put(`${API_URL}/${attendanceId}/time-in`, {
           time_in: newTimeIn,
+        });
+      }
+
+      // ✅ 2. If time_out changed → update via normal route
+      if (newTimeOut !== record.time_out) {
+        await axios.put(`${API_URL}/${attendanceId}`, {
           time_out: newTimeOut,
           working_hours: workingHours,
-        }
-      );
+        });
+      }
 
-      setFilteredLogs(updatedLogs);
+      // ✅ Reload updated data so status updates in UI
+      await fetchLogs();
       setEditingIndex(null);
       setNewTimeIn("");
       setNewTimeOut("");
