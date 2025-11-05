@@ -19,11 +19,9 @@ const Report = () => {
     fetchLogs();
   }, []);
 
-  const fetchLogs = async (from = "", to = "") => {
+  const fetchLogs = async () => {
     try {
-      const res = await axios.get(API_URL, {
-        params: { from, to },
-      });
+      const res = await axios.get(API_URL);
       setLogs(res.data);
       setFilteredLogs(res.data);
     } catch (error) {
@@ -33,10 +31,18 @@ const Report = () => {
 
   const handleSearch = () => {
     if (!fromDate && !toDate) {
-      fetchLogs();
-    } else {
-      fetchLogs(fromDate, toDate);
+      setFilteredLogs(logs);
+      return;
     }
+
+    const filtered = logs.filter((log) => {
+      const logDate = new Date(log.date);
+      const from = fromDate ? new Date(fromDate + "T00:00:00") : null;
+      const to = toDate ? new Date(toDate + "T23:59:59") : null;
+      return (!from || logDate >= from) && (!to || logDate <= to);
+    });
+
+    setFilteredLogs(filtered);
     setCurrentPage(1);
   };
 
@@ -79,11 +85,11 @@ const Report = () => {
                 .map(
                   (log) => `
                     <tr>
-                      <td>${log.date ? new Date(log.date).toLocaleDateString("en-US") : "-"}</td>
+                      <td>${new Date(log.date).toLocaleDateString("en-US")}</td>
                       <td>${log.employee_id}</td>
                       <td>${log.fullname}</td>
                       <td>${log.temperature || "-"}</td>
-                      <td>${log.status || (log.time_in ? "Present" : "Absent")}</td>
+                      <td>${log.status || "-"}</td>
                       <td>${log.time_in || "-"}</td>
                       <td>${log.time_out || "-"}</td>
                       <td>${log.working_hours || "-"}</td>
@@ -176,11 +182,7 @@ const Report = () => {
           </button>
           <button
             className="search-button"
-            onClick={() => {
-              setFromDate("");
-              setToDate("");
-              fetchLogs();
-            }}
+            onClick={() => setFilteredLogs(logs)}
           >
             Show All
           </button>
@@ -204,15 +206,11 @@ const Report = () => {
             {currentItems.length > 0 ? (
               currentItems.map((log, idx) => (
                 <tr key={idx}>
-                  <td>
-                    {log.date
-                      ? new Date(log.date).toLocaleDateString("en-US")
-                      : "-"}
-                  </td>
+                  <td>{new Date(log.date).toLocaleDateString("en-US")}</td>
                   <td>{log.employee_id}</td>
                   <td>{log.fullname}</td>
                   <td>{log.temperature || "-"}</td>
-                  <td>{log.status || (log.time_in ? "Present" : "Absent")}</td>
+                  <td>{log.status || "-"}</td>
                   <td>
                     {editingIndex === idx ? (
                       <input
