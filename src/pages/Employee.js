@@ -71,7 +71,16 @@ const Employee = () => {
   const handleInputChange = (e) => {
     const { name, value, files } = e.target;
     if (name === "image") {
-      setFormData((prev) => ({ ...prev, image: files[0] }));
+          const file = files[0];
+          setFormData((prev) => ({ ...prev, image: file }));
+          // Show preview before upload
+          if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              setEmployeeImages((prev) => ({ ...prev, preview: reader.result }));
+            };
+            reader.readAsDataURL(file);
+          }
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
@@ -231,6 +240,10 @@ const Employee = () => {
           <div className="employee-form-group">
             <label>Image</label>
             <input type="file" name="image" onChange={handleInputChange} ref={fileInputRef} />
+            {/* Show preview if a new image is selected */}
+            {employeeImages.preview && (
+              <img src={employeeImages.preview} alt="preview" width="50" style={{ marginTop: 8 }} />
+            )}
           </div>
           <div className="employee-form-group">
             <label>Date of Birth</label>
@@ -273,8 +286,6 @@ const Employee = () => {
                   <td>
                     {employeeImages[emp.employee_id] ? (
                       <img src={employeeImages[emp.employee_id]} alt="employee" width="50" />
-                    ) : emp.image ? (
-                      <img src={`${API_BASE}/uploads/${emp.image}`} alt="employee" width="50" />
                     ) : (
                       "No Image"
                     )}
