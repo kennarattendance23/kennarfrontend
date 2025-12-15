@@ -1,11 +1,9 @@
-/* ✅ Remove all spacing that causes borders */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-/* ✅ Make sure everything fills the screen */
 html, body, #root {
   width: 100%;
   height: 100%;
@@ -14,15 +12,14 @@ html, body, #root {
   overflow: hidden;
 }
 
-/* ✅ Fullscreen Background (Auto-Fill) */
 .app-bg {
-  position: fixed;         /* ✅ Makes it cover viewport */
+  position: fixed;         
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
-  background-image: url("./kenkenbg.jpg"); /* Or "/kenkenbg.jpg" if in public */
-  background-size: cover;  /* ✅ Fully fills screen */
+  background-image: url("./kenkenbg.jpg"); 
+  background-size: cover;  
   background-position: center;
   background-repeat: no-repeat;
   display: flex;
@@ -31,7 +28,6 @@ html, body, #root {
   font-family: Arial, sans-serif;
 }
 
-/* ✅ Centered login box */
 .login-box {
   background: rgba(186, 216, 245, 0.8);
   padding: 70px;
@@ -69,13 +65,11 @@ button:hover{
   color: white;
 }
 
-/* Wraps the password field + eye icon together */
 .password-wrapper {
   position: relative;
   width: 100%;
 }
 
-/* Eye toggle inside the input field */
 .toggle-password-login {
   position: absolute;
   right: 10px;
@@ -87,13 +81,11 @@ button:hover{
   padding: 0;
 }
 
-/* Make sure the eye icon looks clean */
 .toggle-password-login i {
   font-size: 18px;
   color: #333;
 }
 
-/* Optional: Add some right padding so text doesn’t overlap the icon */
 .password-wrapper input {
   padding-right: 35px;
 }

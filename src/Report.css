@@ -1,12 +1,11 @@
 .report-scroll-wrapper {
-  height: calc(100vh - 20px); /* full height without touching sidebar */
-  overflow-y: auto;           /* enable vertical scroll */
-  overflow-x: hidden;         /* hide horizontal scroll */
-  scrollbar-width: thin;      /* thin scrollbar for Firefox */
-  scrollbar-color: transparent transparent; /* hidden scrollbar color */
+  height: calc(100vh - 20px); 
+  overflow-y: auto;           
+  overflow-x: hidden;         
+  scrollbar-width: thin;      
+  scrollbar-color: transparent transparent; 
 }
 
-/* Hide scrollbar in Chrome, Edge, Safari */
 .report-scroll-wrapper::-webkit-scrollbar {
   width: 0;
   height: 0;
@@ -76,31 +75,25 @@
   background-color: #f1f1f1;
 }
 
-/* ============================= */
-/* Pagination + Print Layout */
-/* ============================= */
 .pagination-print-wrapper{
   display: flex;
   align-items: center;
-  justify-content: flex-end; /* move to right */
+  justify-content: flex-end; 
   gap: 15px;
   margin-top: 20px;
 }
 
-
-/* ✅ Added container to align entries-info (left) and pagination (right) */
 .pagination-footer {
   display: flex;
-  justify-content: space-between; /* left and right corners */
+  justify-content: space-between; 
   align-items: center;
   width: 100%;
 }
 
-/* Buttons group (pagination) */
 .buttons-group {
   display: flex;
   align-items: center;
-  justify-content: flex-end; /* move to right */
+  justify-content: flex-end; 
   gap: 15px;
 }
 
@@ -129,7 +122,6 @@
   cursor: not-allowed;
 }
 
-/* Centered Print Button */
 .print-button {
   background-color: #007bff;
   color: white;
@@ -149,7 +141,6 @@
   transition: all 0.2s ease-in-out;
 }
 
-/* Left corner text */
 .entries-info {
   margin-right: 250px;
   font-size: 1vw;
@@ -179,9 +170,6 @@
   transition: all 0.2s ease-in-out;
 }
 
-/* ============================= */
-/* Table Borders */
-/* ============================= */
 .report-table th,
 .report-table td {
   border: 1px solid #194979a2;

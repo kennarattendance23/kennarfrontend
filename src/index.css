@@ -1,11 +1,9 @@
-/* ✅ Reset all default spacing */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-/* ✅ Ensure the root elements take up 100% of the window */
 html, body, #root {
   width: 100%;
   height: 100%;
@@ -15,7 +13,6 @@ html, body, #root {
   background: none;
 }
 
-/* ✅ Keep your original font settings */
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',

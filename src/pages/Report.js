@@ -138,14 +138,12 @@ const Report = () => {
     }
 
     try {
-      // ✅ 1. If time_in changed → update via /time-in route
       if (newTimeIn !== record.time_in) {
         await axios.put(`${API_URL}/${attendanceId}/time-in`, {
           time_in: newTimeIn,
         });
       }
 
-      // ✅ 2. If time_out changed → update via normal route
       if (newTimeOut !== record.time_out) {
         await axios.put(`${API_URL}/${attendanceId}`, {
           time_out: newTimeOut,
@@ -153,7 +151,6 @@ const Report = () => {
         });
       }
 
-      // ✅ Reload updated data so status updates in UI
       await fetchLogs();
       setEditingIndex(null);
       setNewTimeIn("");

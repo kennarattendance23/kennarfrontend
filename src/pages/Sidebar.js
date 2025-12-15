@@ -1,7 +1,6 @@
-// src/components/Sidebar.js
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import logo from '../logo.png';   // ✅ Make sure this file exists
+import logo from '../logo.png';   
 import '../sidebar.css';
 
 const Sidebar = ({ admin_name }) => {
@@ -10,7 +9,6 @@ const Sidebar = ({ admin_name }) => {
 
   return (
     <div className="sidebar">
-      {/* ✅ Logo Section */}
       <div className="logo-container">
         <img
           src={logo}
@@ -19,10 +17,8 @@ const Sidebar = ({ admin_name }) => {
         />
       </div>
 
-      {/* ✅ Admin Name */}
       <h3 className="admin-name">{admin_name || 'Guest'}</h3>
 
-      {/* ✅ Navigation Links */}
       <nav>
         <Link to="/dashboard" className={currentPath === '/dashboard' ? 'active' : ''}>
           <img src="/icons/homereal.png" alt="Dashboard" className="sidebar-icon" />

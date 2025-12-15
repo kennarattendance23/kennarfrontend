@@ -132,7 +132,6 @@ function User() {
               />
             </div>
 
-            {/* ✅ Password Field with Eye Toggle */}
             <div className="form-group password-group">
               <label>Password</label>
               <div className="password-input-wrapper">

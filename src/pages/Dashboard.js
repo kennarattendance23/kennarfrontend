@@ -1,10 +1,8 @@
-// === src/pages/Dashboard.js ===
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import '../Dashboard.css';
 
-// ✅ Use the same base URL as your backend
 const API_BASE_URL = 'https://kennarbackend.onrender.com/api';
 
 function Dashboard() {
@@ -18,11 +16,10 @@ function Dashboard() {
   const [time, setTime] = useState(new Date());
   const navigate = useNavigate();
 
-  // 📅 Fetch dashboard stats
   const fetchStats = async () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/dashboard-stats`);
-      console.log("📊 Dashboard data:", response.data); // for debugging
+      console.log("📊 Dashboard data:", response.data); 
 
       setStats({
         employees: response.data.employees || 0,
@@ -35,9 +32,8 @@ function Dashboard() {
     }
   };
 
-  // 🕒 Auto-refresh every 30 seconds + live clock
   useEffect(() => {
-    fetchStats(); // initial load
+    fetchStats(); 
     const statsInterval = setInterval(fetchStats, 30000);
     const clockInterval = setInterval(() => setTime(new Date()), 1000);
     return () => {
@@ -46,18 +42,15 @@ function Dashboard() {
     };
   }, []);
 
-  // Clock hand positions
   const hourDeg = ((time.getHours() % 12) + time.getMinutes() / 60) * 30;
   const minuteDeg = time.getMinutes() * 6;
   const secondDeg = time.getSeconds() * 6;
 
-  // Logout handler
   const handleLogout = () => {
     localStorage.removeItem('authToken');
     navigate('/login');
   };
 
-  // Calendar generation
   const getCalendarDays = () => {
     const today = new Date();
     const year = today.getFullYear();
@@ -82,7 +75,6 @@ function Dashboard() {
         <button className="logout-btn" onClick={handleLogout}>Logout</button>
       </div>
 
-      {/* 📊 Dashboard Boxes */}
       <div className="stats-grid">
         <div className="stat-box">
           <strong>Employees</strong>
@@ -102,7 +94,6 @@ function Dashboard() {
         </div>
       </div>
 
-      {/* 🕒 Clock + 📅 Calendar */}
       <div className="calendar-clock">
         <div className="clock">
           <div className="clock-face">

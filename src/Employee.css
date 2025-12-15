@@ -1,4 +1,3 @@
-/* === Universal Reset & Fullscreen Wrapper === */
 * {
   margin: 0;
   padding: 0;
@@ -11,11 +10,11 @@ html, body, #root {
 }
 
 .employee-scroll {
-  height: calc(100vh - 20px); /* full height without touching sidebar */
-  overflow-y: auto;           /* enable vertical scroll */
-  overflow-x: hidden;         /* hide horizontal scroll */
-  scrollbar-width: thin;      /* thin scrollbar for Firefox */
-  scrollbar-color: transparent transparent; /* hidden scrollbar color */
+  height: calc(100vh - 20px); 
+  overflow-y: auto;           
+  overflow-x: hidden;         
+  scrollbar-width: thin;      
+  scrollbar-color: transparent transparent; 
 }
 
 .employee-scroll::-webkit-scrollbar {
@@ -28,28 +27,25 @@ html, body, #root {
   box-sizing: border-box;
 }
 
-/* === Employee Container Auto-Fit === */
 .employee-container {
   background-color: #e6f2ff;
-  width: 95%;          /* auto-scale with screen */
+  width: 95%;          
   max-width: 1200px;
-  min-height: 80vh;    /* fill most of the screen */
+  min-height: 80vh;    
   padding: 30px;
   margin: 0 auto;
   border-radius: 15px;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   box-sizing: border-box;
-  transition: all 0.3s ease; /* smooth resize */
+  transition: all 0.3s ease; 
 }
 
-/* === Header === */
 .employee-header {
   font-size: 30px;
   margin-bottom: 25px;
 }
 
-/* === Search === */
 .employee-search {
   display: flex;
   font-size: 16px;
@@ -67,7 +63,6 @@ html, body, #root {
   margin-right: 60px;
 }
 
-/* === Form === */
 .employee-form {
   display: flex;
   flex-wrap: wrap;
@@ -96,7 +91,6 @@ html, body, #root {
   box-sizing: border-box;
 }
 
-/* === Buttons === */
 .update-button,
 .cancel-button,
 .proceed-button {
@@ -137,7 +131,6 @@ html, body, #root {
   transition: all 0.2s ease-in-out;
 }
 
-/* === Employee Table === */
 .employee-table {
   width: 100%;
   border-collapse: collapse;
@@ -168,7 +161,6 @@ html, body, #root {
   padding: 5px;
   vertical-align: top;
 }
-
 
 .employee-actions {
   display: flex;
@@ -210,36 +202,31 @@ html, body, #root {
   transition: all 0.2s ease-in-out;
 }
 
-/* === Pagination === */
 .pagination{
   display: flex;
   align-items: center;
-  justify-content: flex-end; /* move to right */
+  justify-content: flex-end; 
   gap: 15px;
   margin-top: 20px;
 }
 
-/* === Pagination container === */
 .pagination-controls {
   display: flex;
   align-items: center;
-  justify-content: flex-end; /* move to right */
+  justify-content: flex-end; 
   gap: 15px;
 }
 
-/* Info text */
 .pagination-info {
   margin-right: 680px;
   font-size: 1vw;
 }
 
-/* Wrapper for buttons */
 .pagination-controls {
   display: flex;
-  gap: 8px; /* spacing between buttons */
+  gap: 8px; 
 }
 
-/* Pagination buttons (pill-shaped) */
 .pagination-btn {
   background-color: #007bff;
   border: 2px solid #f5f5f5;
@@ -262,7 +249,6 @@ html, body, #root {
   cursor: not-allowed;
 }
 
-/* === Modal === */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -349,7 +335,6 @@ html, body, #root {
   background-color: #a6a6a6;
 }
 
-/* === Hover effects for action buttons === */
 .employee-actions .edit-btn:hover {
   background-color: #1c5980;
   transform: scale(1.05);
@@ -362,14 +347,12 @@ html, body, #root {
   transition: all 0.2s ease-in-out;
 }
 
-/* === Button group for form === */
 .employee-form-group.button-group {
   margin-top: 40px;
   display: flex;
   justify-content: flex-start;
 }
 
-/* === Inputs alignment === */
 .employee-form-group select,
 .employee-form-group input[type="file"],
 .employee-form-group input[type="date"] {
@@ -390,14 +373,12 @@ html, body, #root {
   font-size: 14px;
 }
 
-/* === Images inside table === */
 .employee-table img {
   max-width: 100%;
   height: auto;
   display: inline-block;
 }
 
-/* === Responsive adjustments === */
 @media (max-width: 900px) {
   .employee-form-group {
     width: 100%;
@@ -419,9 +400,6 @@ html, body, #root {
   }
 }
 
-/* === Extra Responsive Adjustments for Tablets and Mobile === */
-
-/* For tablets (≤768px) */
 @media (max-width: 768px) {
   .employee-container {
     width: 95%;
@@ -465,7 +443,6 @@ html, body, #root {
   }
 }
 
-/* For mobile phones (≤480px) */
 @media (max-width: 480px) {
   .employee-container {
     width: 100%;

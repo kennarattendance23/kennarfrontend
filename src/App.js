@@ -1,5 +1,3 @@
-// src/App.js
-
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from 'react-router-dom';
 
@@ -14,7 +12,6 @@ import './App.css';
 const AppWrapper = () => {
   const location = useLocation();
 
-  // ✅ Initial state reads from localStorage (persist login)
   const [isLoggedIn, setIsLoggedIn] = useState(
     !!localStorage.getItem('admins')
   );
@@ -23,23 +20,21 @@ const AppWrapper = () => {
   );
 
   useEffect(() => {
-    // ✅ Only handle explicit logout events
     const logoutHandler = () => {
       setIsLoggedIn(false);
       setAdminName(null);
-      localStorage.removeItem('admins'); // clear stored session
+      localStorage.removeItem('admins'); 
     };
 
     window.addEventListener('logout', logoutHandler);
     return () => window.removeEventListener('logout', logoutHandler);
   }, []);
 
-  // ✅ Called after login from Login page
   const onLoginChange = (user) => {
     if (user) {
       setIsLoggedIn(true);
       setAdminName(user.admin_name);
-      localStorage.setItem('admins', JSON.stringify(user)); // persist session
+      localStorage.setItem('admins', JSON.stringify(user)); 
     } else {
       setIsLoggedIn(false);
       setAdminName(null);
@@ -51,18 +46,14 @@ const AppWrapper = () => {
 
   return (
     <div className="app-layout" style={{ display: 'flex' }}>
-      {/* ✅ Sidebar only visible if logged in and not on login page */}
       {!isLoginPage && isLoggedIn && <Sidebar admin_name={admin_name} />}
 
       <div className="main-content" style={{ flex: 1, padding: '20px' }}>
         <Routes>
-          {/* ✅ Default route goes to login */}
           <Route path="/" element={<Navigate to="/login" replace />} />
 
-          {/* ✅ Login page */}
           <Route path="/login" element={<Login onLoginChange={onLoginChange} />} />
 
-          {/* ✅ Protected routes */}
           <Route
             path="/dashboard"
             element={isLoggedIn ? <Dashboard /> : <Navigate to="/login" />}
@@ -80,7 +71,6 @@ const AppWrapper = () => {
             element={isLoggedIn ? <Report /> : <Navigate to="/login" />}
           />
 
-          {/* ✅ Catch-all unknown routes */}
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </div>

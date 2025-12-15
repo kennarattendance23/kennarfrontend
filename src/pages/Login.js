@@ -1,4 +1,3 @@
-// pages/Login.js
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../Login.css';
@@ -53,7 +52,6 @@ function Login({ onLoginChange }) {
             onChange={(e) => setUsername(e.target.value)}
           /><br />
 
-          {/* Password Field with Eye Toggle */}
           <div className="password-wrapper">
             <input
               type={showPassword ? 'text' : 'password'}

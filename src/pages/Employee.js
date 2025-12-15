@@ -1,4 +1,3 @@
-// === Employee.js ===
 import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import "../Employee.css";
@@ -25,25 +24,21 @@ const Employee = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const employeesPerPage = 5;
 
-  // ✅ Store base64 employee images
   const [employeeImages, setEmployeeImages] = useState({});
 
   const API_BASE = process.env.REACT_APP_API_URL || "https://kennarbackend.onrender.com";
 
-  // === Fetch all employees ===
   const fetchEmployees = async () => {
     try {
       const res = await axios.get(`${API_BASE}/api/employees`);
       setEmployees(res.data);
 
-      // ✅ Fetch each employee’s image by employee_id
       res.data.forEach((emp) => fetchEmployeeImage(emp.employee_id));
     } catch (err) {
       console.error("Error fetching employees:", err);
     }
   };
 
-  // === Fetch employee image (base64) ===
   const fetchEmployeeImage = (employee_id) => {
     fetch(`${API_BASE}/api/employees/${employee_id}/image`)
       .then((res) => (res.ok ? res.json() : Promise.resolve({})))
@@ -67,13 +62,11 @@ const Employee = () => {
     fetchEmployees();
   }, []);
 
-  // === Handle input changes ===
   const handleInputChange = (e) => {
     const { name, value, files } = e.target;
     if (name === "image") {
           const file = files[0];
           setFormData((prev) => ({ ...prev, image: file }));
-          // Show preview before upload
           if (file) {
             const reader = new FileReader();
             reader.onloadend = () => {
@@ -102,7 +95,6 @@ const Employee = () => {
     setIsSaving(false);
   };
 
-  // === Handle Save / Update ===
   const handleSubmitConfirmed = async () => {
     setIsSaving(true);
     try {
@@ -141,7 +133,6 @@ const Employee = () => {
     }
   };
 
-  // === Delete ===
   const confirmDelete = (emp) => {
     setEmployeeToDelete(emp);
     setShowDeleteModal(true);
@@ -160,7 +151,6 @@ const Employee = () => {
     }
   };
 
-  // === Search and pagination ===
   const filteredEmployees = employees.filter(
     (emp) =>
       emp.employee_id?.toString().toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -196,13 +186,11 @@ const Employee = () => {
     if (currentPage > 1) setCurrentPage((p) => p - 1);
   };
 
-  // === Render ===
   return (
     <div className="employee-scroll" id="employeeScroll">
       <div className="employee-container">
         <h3 className="employee-header">Employee Management</h3>
 
-        {/* Search bar */}
         <div className="employee-search">
           <input
             type="text"
@@ -215,7 +203,6 @@ const Employee = () => {
           />
         </div>
 
-        {/* Employee form */}
         <form className="employee-form" onSubmit={handleSubmit}>
           <div className="employee-form-group">
             <label>Employee ID</label>
@@ -240,8 +227,7 @@ const Employee = () => {
           <div className="employee-form-group">
             <label>Image</label>
             <input type="file" name="image" onChange={handleInputChange} ref={fileInputRef} />
-            {/* Show preview if a new image is selected */}
-            <img
+           {/* <img
               src={
                 employeeImages.preview ||
                 (formData.employee_id && employeeImages[formData.employee_id]) ||
@@ -250,8 +236,8 @@ const Employee = () => {
               alt="preview"
               width="50"
               style={{ marginTop: 8 }}
-            />
-          </div>
+            /> */}
+          </div> 
           <div className="employee-form-group">
             <label>Date of Birth</label>
             <input type="date" name="date_of_birth" value={formData.date_of_birth} onChange={handleInputChange} />
@@ -272,7 +258,6 @@ const Employee = () => {
           </div>
         </form>
 
-        {/* Employee table */}
         <table className="employee-table">
           <thead>
             <tr>
@@ -336,7 +321,6 @@ const Employee = () => {
           </tbody>
         </table>
 
-        {/* Pagination */}
         <div className="pagination">
           <div className="pagination-info">
             {filteredEmployees.length === 0
@@ -362,7 +346,6 @@ const Employee = () => {
           </div>
         </div>
 
-        {/* Update Modal */}
         {showUpdateModal && (
           <div className="modal-overlay">
             <div className="modal-content">
@@ -380,7 +363,6 @@ const Employee = () => {
           </div>
         )}
 
-        {/* Delete Modal */}
         {showDeleteModal && (
           <div className="modal-overlay">
             <div className="modal-content">
