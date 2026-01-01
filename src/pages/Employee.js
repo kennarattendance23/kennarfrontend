@@ -227,16 +227,6 @@ const Employee = () => {
           <div className="employee-form-group">
             <label>Image</label>
             <input type="file" name="image" onChange={handleInputChange} ref={fileInputRef} />
-           {/* <img
-              src={
-                employeeImages.preview ||
-                (formData.employee_id && employeeImages[formData.employee_id]) ||
-                "/default-avatar.png"
-              }
-              alt="preview"
-              width="50"
-              style={{ marginTop: 8 }}
-            /> */}
           </div> 
           <div className="employee-form-group">
             <label>Date of Birth</label>
