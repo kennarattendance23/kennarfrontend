@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import "../Report.css";
+import "../Summary.css";
 
 const Report = () => {
   const [logs, setLogs] = useState([]);
@@ -56,7 +56,7 @@ const Report = () => {
     const tableHTML = `
       <html>
         <head>
-          <title>Attendance Record And Approval</title>
+          <title>Attendance Summary Report</title>
           <style>
             body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; }
             table { width: 100%; border-collapse: collapse; text-align: center; }
@@ -70,14 +70,12 @@ const Report = () => {
           <table>
             <thead>
               <tr>
-                <th>DATE</th>
                 <th>EMPLOYEE ID</th>
                 <th>FULLNAME</th>
-                <th>TEMPERATURE</th>
-                <th>STATUS</th>
-                <th>TIME-IN</th>
-                <th>TIME-OUT</th>
-                <th>NO. OF HOURS</th>
+                <th>DAYS PRESENT</th>
+                <th>LATE COUNT/th>
+                <th>ABSENCES</th>
+                <th>TOTAL HOURS</th>
               </tr>
             </thead>
             <tbody>
@@ -162,11 +160,11 @@ const Report = () => {
   };
 
   return (
-    <div className="report-scroll-wrapper">
-      <div className="report-container">
-        <h3 className="report-header">Attendance Logs</h3>
+    <div className="summary-scroll-wrapper">
+      <div className="summary-container">
+        <h3 className="summary-header">Attendance Logs</h3>
 
-        <div className="report-controls">
+        <div className="summary-controls">
           <label>Show from</label>
           <input
             type="date"
@@ -190,17 +188,15 @@ const Report = () => {
           </button>
         </div>
 
-        <table className="report-table">
+        <table className="summary-table">
           <thead>
             <tr>
-              <th>DATE</th>
               <th>EMPLOYEE ID</th>
               <th>FULLNAME</th>
-              <th>TEMPERATURE</th>
-              <th>STATUS</th>
-              <th>TIME-IN</th>
-              <th>TIME-OUT</th>
-              <th>NO. OF HOURS</th>
+              <th>DAYS PRESENT</th>
+              <th>LATE COUNT</th>
+              <th>ABSENCES</th>
+              <th>TOTAL HOURS</th>
               <th className="no-print">ACTION</th>
             </tr>
           </thead>
