@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard';
 import User from './pages/User';
 import Report from './pages/Report';
 import Login from './pages/Login';
+import Login from './pages/Summary';
 import './App.css';
 
 const AppWrapper = () => {
