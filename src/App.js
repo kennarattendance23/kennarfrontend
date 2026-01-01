@@ -70,6 +70,10 @@ const AppWrapper = () => {
             path="/report"
             element={isLoggedIn ? <Report /> : <Navigate to="/login" />}
           />
+          <Route
+            path="/summary"
+            element={isLoggedIn ? <Summary /> : <Navigate to="/login" />}
+          />
 
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
