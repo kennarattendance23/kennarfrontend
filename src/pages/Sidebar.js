@@ -33,11 +33,11 @@ const Sidebar = ({ admin_name }) => {
           <span>User</span>
         </Link>
         <Link to="/report" className={currentPath === '/report' ? 'active' : ''}>
-          <img src="/icons/newspaper.png" alt="Record" className="sidebar-icon" />
+          <img src="/icons/approved.png" alt="Record" className="sidebar-icon" />
           <span>Record</span>
         </Link>
         <Link to="/summary" className={currentPath === '/summary' ? 'active' : ''}>
-          <img src="/icons/approved.png" alt="Summary" className="sidebar-icon" />
+          <img src="/icons/newspaper.png" alt="Summary" className="sidebar-icon" />
           <span>Summary</span>
         </Link>
       </nav>
