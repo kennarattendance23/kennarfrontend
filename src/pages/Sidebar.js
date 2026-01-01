@@ -32,12 +32,12 @@ const Sidebar = ({ admin_name }) => {
           <img src="/icons/circle-user.png" alt="User" className="sidebar-icon" />
           <span>User</span>
         </Link>
-        <Link to="/logs" className={currentPath === '/logs' ? 'active' : ''}>
-          <img src="/icons/newspaper.png" alt="Logs" className="sidebar-icon" />
+        <Link to="/report" className={currentPath === '/report' ? 'active' : ''}>
+          <img src="/icons/newspaper.png" alt="Record" className="sidebar-icon" />
           <span>Report</span>
         </Link>
-        <Link to="/report" className={currentPath === '/report' ? 'active' : ''}>
-          <img src="/icons/newspaper.png" alt="Report" className="sidebar-icon" />
+        <Link to="/summary" className={currentPath === '/summary' ? 'active' : ''}>
+          <img src="/icons/newspaper.png" alt="Summary" className="sidebar-icon" />
           <span>Report</span>
         </Link>
       </nav>
