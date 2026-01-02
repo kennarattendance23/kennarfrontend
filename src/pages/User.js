@@ -122,9 +122,9 @@ function User() {
             </div>
 
             <div className="form-group">
-              <label>Username</label>
+              <label>Email</label>
               <input
-                placeholder="Username"
+                placeholder="Email"
                 value={form.username}
                 onChange={(e) =>
                   setForm({ ...form, username: e.target.value })
