@@ -7,15 +7,10 @@ function User() {
   const [form, setForm] = useState({
     employee_id: '',
     admin_name: '',
-    username: '',
-    password: ''
+    email: ''
   });
   const [search, setSearch] = useState('');
   const [error, setError] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-
-  const [showModal, setShowModal] = useState(false);
-  const [selectedUser, setSelectedUser] = useState(null);
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
@@ -34,8 +29,9 @@ function User() {
   };
 
   const addUser = () => {
-    const { employee_id, admin_name, username, password } = form;
-    if (!employee_id || !admin_name || !username || !password) {
+    const { employee_id, admin_name, email } = form;
+
+    if (!employee_id || !admin_name || !email) {
       setError('All fields are required');
       return;
     }
@@ -44,31 +40,16 @@ function User() {
       .post(API_URL, form)
       .then((res) => {
         setUsers((prev) => [...prev, res.data]);
-        setForm({ employee_id: '', admin_name: '', username: '', password: '' });
+        setForm({ employee_id: '', admin_name: '', email: '' });
         setError('');
-        setShowPassword(false);
+        alert('Account created. Default password sent via email.');
       })
       .catch((err) => {
-        if (err.response?.status === 409) setError('Username already exists');
-        else setError('Failed to add user');
+        if (err.response?.status === 409)
+          setError('Email already exists');
+        else
+          setError('Failed to add user');
       });
-  };
-
-  const confirmDeleteUser = (user) => {
-    setSelectedUser(user);
-    setShowModal(true);
-  };
-
-  const deleteUser = () => {
-    if (!selectedUser) return;
-    axios
-      .delete(`${API_URL}/${selectedUser.id}`)
-      .then(() => {
-        setUsers(users.filter((u) => u.id !== selectedUser.id));
-        setShowModal(false);
-        setSelectedUser(null);
-      })
-      .catch((err) => console.error(err));
   };
 
   const filteredUsers = users.filter((user) =>
@@ -99,6 +80,7 @@ function User() {
 
         <div className="user-form">
           <div className="form-grid">
+
             <div className="form-group">
               <label>Employee ID</label>
               <input
@@ -113,7 +95,7 @@ function User() {
             <div className="form-group">
               <label>Name</label>
               <input
-                placeholder="Fullname"
+                placeholder="Full Name"
                 value={form.admin_name}
                 onChange={(e) =>
                   setForm({ ...form, admin_name: e.target.value })
@@ -122,53 +104,48 @@ function User() {
             </div>
 
             <div className="form-group">
-              <label>Username</label>
+              <label>Email</label>
               <input
-                placeholder="Username"
-                value={form.username}
+                type="email"
+                placeholder="Email Address"
+                value={form.email}
                 onChange={(e) =>
-                  setForm({ ...form, username: e.target.value })
+                  setForm({ ...form, email: e.target.value })
                 }
               />
             </div>
 
-            <div className="form-group password-group">
-              <label>Password</label>
-              <div className="password-input-wrapper">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="Password"
-                  value={form.password}
-                  onChange={(e) =>
-                    setForm({ ...form, password: e.target.value })
-                  }
-                />
-                {form.password && (
-                  <button
-                    type="button"
-                    className="toggle-password"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    <i
-                      className={`fa-solid ${
-                        showPassword ? 'fa-eye' : 'fa-eye-slash'
-                      }`}
-                    ></i>
-                  </button>
-                )}
-              </div>
-            </div>
           </div>
 
           <button onClick={addUser} className="add-user-btn">
-            Add
+            Add User
           </button>
+
           {error && <p className="error-message">{error}</p>}
         </div>
 
+        <table className="user-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Employee ID</th>
+              <th>Name</th>
+              <th>Email</th>
+            </tr>
+          </thead>
+          <tbody>
+            {currentUsers.map((user) => (
+              <tr key={user.id}>
+                <td>{user.id}</td>
+                <td>{user.employee_id}</td>
+                <td>{user.admin_name}</td>
+                <td>{user.username}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
 
       </div>
-
     </div>
   );
 }
