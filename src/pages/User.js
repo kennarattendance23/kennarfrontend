@@ -166,43 +166,6 @@ function User() {
           {error && <p className="error-message">{error}</p>}
         </div>
 
-        <table className="user-table">
-          <thead>
-            <tr>
-              <th>EMPLOYEE ID</th>
-              <th>NAME</th>
-              <th>USERNAME</th>
-              <th>PASSWORD</th>
-              <th className="action-header">ACTION</th>
-            </tr>
-          </thead>
-          <tbody>
-            {currentUsers.length > 0 ? (
-              currentUsers.map((user) => (
-                <tr key={user.id}>
-                  <td>{user.employee_id}</td>
-                  <td>{user.admin_name}</td>
-                  <td>{user.username}</td>
-                  <td>{user.password}</td>
-                  <td className="action-cell">
-                    <button
-                      className="user-delete-btn"
-                      onClick={() => confirmDeleteUser(user)}
-                    >
-                      DELETE
-                    </button>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="5" style={{ textAlign: 'center' }}>
-                  No users found.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
 
         <div className="user-pagination">
           <div className="user-pagination-info">
