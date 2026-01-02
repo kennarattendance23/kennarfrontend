@@ -167,30 +167,6 @@ function User() {
         </div>
 
 
-        <div className="user-pagination">
-          <div className="user-pagination-info">
-            {filteredUsers.length === 0
-              ? 'Showing 0 of 0'
-              : `Showing ${currentPage} of ${totalPages}`}
-          </div>
-          <button
-            className="pagination-btn"
-            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-            disabled={currentPage === 1}
-          >
-            Previous
-          </button>
-          <span>{currentPage}</span>
-          <button
-            className="pagination-btn"
-            onClick={() =>
-              setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-            }
-            disabled={currentPage === totalPages || totalPages === 0}
-          >
-            Next
-          </button>
-        </div>
       </div>
 
       {showModal && selectedUser && (
