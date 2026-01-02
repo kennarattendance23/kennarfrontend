@@ -169,28 +169,6 @@ function User() {
 
       </div>
 
-      {showModal && selectedUser && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h3>Confirm Delete</h3>
-            <p>
-              Are you sure you want to delete{' '}
-              <strong>{selectedUser.admin_name}</strong>?
-            </p>
-            <div className="modal-actions">
-              <button
-                className="cancel-button"
-                onClick={() => setShowModal(false)}
-              >
-                Cancel
-              </button>
-              <button className="delete-btn" onClick={deleteUser}>
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
