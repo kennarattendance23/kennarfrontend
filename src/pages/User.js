@@ -10,11 +10,8 @@ function User() {
     username: '',
     password: ''
   });
-  const [search, setSearch] = useState('');
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-
-  const [showModal, setShowModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -52,11 +49,6 @@ function User() {
         if (err.response?.status === 409) setError('Username already exists');
         else setError('Failed to add user');
       });
-  };
-
-  const confirmDeleteUser = (user) => {
-    setSelectedUser(user);
-    setShowModal(true);
   };
 
   const deleteUser = () => {
