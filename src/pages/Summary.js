@@ -2,63 +2,56 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import "../Summary.css";
 
-const Report = () => {
-  const [logs, setLogs] = useState([]);
-  const [fromDate, setFromDate] = useState("");
-  const [toDate, setToDate] = useState("");
-  const [filteredLogs, setFilteredLogs] = useState([]);
-  const [editingIndex, setEditingIndex] = useState(null);
-  const [newTimeIn, setNewTimeIn] = useState("");
-  const [newTimeOut, setNewTimeOut] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
+const Summary = () => {
+  const [month, setMonth] = useState("");
+  const [summary, setSummary] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  const itemsPerPage = 5;
-  const API_URL = "https://kennarbackend.onrender.com/api/attendance";
+  const API_URL =
+    "https://kennarbackend.onrender.com/api/attendance/summary";
+
+  const getMonthOptions = () => {
+    const months = [];
+    const start = new Date(2024, 0); // adjust if needed
+    const now = new Date();
+
+    while (start <= now) {
+      months.push({
+        value: start.toISOString().slice(0, 7),
+        label: start.toLocaleString("default", {
+          month: "long",
+          year: "numeric",
+        }),
+      });
+      start.setMonth(start.getMonth() + 1);
+    }
+    return months.reverse();
+  };
 
   useEffect(() => {
-    fetchLogs();
-  }, []);
+    if (month) fetchSummary();
+  }, [month]);
 
-  const fetchLogs = async () => {
+  const fetchSummary = async () => {
+    setLoading(true);
     try {
-      const res = await axios.get(API_URL);
-      setLogs(res.data);
-      setFilteredLogs(res.data);
-    } catch (error) {
-      console.error("❌ Error fetching logs:", error);
+      const res = await axios.get(`${API_URL}?month=${month}`);
+      setSummary(res.data);
+    } catch (err) {
+      console.error("❌ Error loading summary:", err);
+    } finally {
+      setLoading(false);
     }
   };
-
-  const handleSearch = () => {
-    if (!fromDate && !toDate) {
-      setFilteredLogs(logs);
-      return;
-    }
-
-    const filtered = logs.filter((log) => {
-      const logDate = new Date(log.date);
-      const from = fromDate ? new Date(fromDate + "T00:00:00") : null;
-      const to = toDate ? new Date(toDate + "T23:59:59") : null;
-      return (!from || logDate >= from) && (!to || logDate <= to);
-    });
-
-    setFilteredLogs(filtered);
-    setCurrentPage(1);
-  };
-
-  const totalPages = Math.ceil(filteredLogs.length / itemsPerPage);
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filteredLogs.slice(indexOfFirstItem, indexOfLastItem);
 
   const handlePrint = () => {
     const printWindow = window.open("", "_blank");
-    const tableHTML = `
+    printWindow.document.write(`
       <html>
         <head>
-          <title>Attendance Summary Report</title>
+          <title>Attendance Summary</title>
           <style>
-            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; }
+            body { font-family: Arial; padding: 20px; }
             table { width: 100%; border-collapse: collapse; text-align: center; }
             th, td { border: 1px solid #000; padding: 8px; }
             th { background: #59a5f0; }
@@ -66,244 +59,102 @@ const Report = () => {
           </style>
         </head>
         <body>
-          <h2 style="text-align:center;">Attendance Report</h2>
+          <h2 style="text-align:center;">Attendance Summary (${month})</h2>
           <table>
             <thead>
               <tr>
                 <th>EMPLOYEE ID</th>
-                <th>FULLNAME</th>
+                <th>FULL NAME</th>
                 <th>DAYS PRESENT</th>
-                <th>LATE COUNT/th>
+                <th>LATE COUNT</th>
                 <th>ABSENCES</th>
                 <th>TOTAL HOURS</th>
               </tr>
             </thead>
             <tbody>
-              ${filteredLogs
+              ${summary
                 .map(
-                  (log) => `
-                    <tr>
-                      <td>${new Date(log.date).toLocaleDateString("en-US")}</td>
-                      <td>${log.employee_id}</td>
-                      <td>${log.fullname}</td>
-                      <td>${log.temperature || "-"}</td>
-                      <td>${log.status || "-"}</td>
-                      <td>${log.time_in || "-"}</td>
-                      <td>${log.time_out || "-"}</td>
-                      <td>${log.working_hours || "-"}</td>
-                    </tr>
-                  `
+                  (r) => `
+                  <tr>
+                    <td>${r.employee_id}</td>
+                    <td>${r.fullname}</td>
+                    <td>${r.days_present}</td>
+                    <td>${r.late_count}</td>
+                    <td>${r.absences}</td>
+                    <td>${r.total_hours}</td>
+                  </tr>
+                `
                 )
                 .join("")}
             </tbody>
           </table>
         </body>
       </html>
-    `;
-    printWindow.document.write(tableHTML);
+    `);
     printWindow.document.close();
     printWindow.print();
-  };
-
-  const handleEditClick = (index) => {
-    setEditingIndex(index);
-    setNewTimeIn(currentItems[index].time_in || "");
-    setNewTimeOut(currentItems[index].time_out || "");
-  };
-
-  const handleCancelClick = () => {
-    setEditingIndex(null);
-    setNewTimeIn("");
-    setNewTimeOut("");
-  };
-
-  const handleSaveClick = async (index) => {
-    const globalIndex = indexOfFirstItem + index;
-    const record = filteredLogs[globalIndex];
-    const attendanceId = record.attendance_id;
-
-    let workingHours = null;
-    if (newTimeIn && newTimeOut) {
-      const [inH, inM] = newTimeIn.split(":").map(Number);
-      const [outH, outM] = newTimeOut.split(":").map(Number);
-      let hours = outH - inH;
-      let minutes = outM - inM;
-      if (minutes < 0) {
-        hours -= 1;
-        minutes += 60;
-      }
-      workingHours = (hours + minutes / 60).toFixed(2);
-    }
-
-    try {
-      if (newTimeIn !== record.time_in) {
-        await axios.put(`${API_URL}/${attendanceId}/time-in`, {
-          time_in: newTimeIn,
-        });
-      }
-
-      if (newTimeOut !== record.time_out) {
-        await axios.put(`${API_URL}/${attendanceId}`, {
-          time_out: newTimeOut,
-          working_hours: workingHours,
-        });
-      }
-
-      await fetchLogs();
-      setEditingIndex(null);
-      setNewTimeIn("");
-      setNewTimeOut("");
-    } catch (error) {
-      console.error("❌ Failed to save changes:", error);
-      alert("Failed to save changes to the database");
-    }
   };
 
   return (
     <div className="summary-scroll-wrapper">
       <div className="summary-container">
-        <h3 className="summary-header">Attendance Logs</h3>
+        <h3 className="summary-header">Monthly Attendance Summary</h3>
 
         <div className="summary-controls">
-          <label>Show from</label>
-          <input
-            type="date"
-            value={fromDate}
-            onChange={(e) => setFromDate(e.target.value)}
-          />
-          <span>To</span>
-          <input
-            type="date"
-            value={toDate}
-            onChange={(e) => setToDate(e.target.value)}
-          />
-          <button className="search-button" onClick={handleSearch}>
-            Search
-          </button>
-          <button
-            className="search-button"
-            onClick={() => setFilteredLogs(logs)}
-          >
-            Show All
-          </button>
+          <label>Select Month:</label>
+          <select value={month} onChange={(e) => setMonth(e.target.value)}>
+            <option value="">-- Choose Month --</option>
+            {getMonthOptions().map((m) => (
+              <option key={m.value} value={m.value}>
+                {m.label}
+              </option>
+            ))}
+          </select>
+
+          {month && (
+            <button className="print-button" onClick={handlePrint}>
+              Print
+            </button>
+          )}
         </div>
 
         <table className="summary-table">
           <thead>
             <tr>
               <th>EMPLOYEE ID</th>
-              <th>FULLNAME</th>
+              <th>FULL NAME</th>
               <th>DAYS PRESENT</th>
               <th>LATE COUNT</th>
               <th>ABSENCES</th>
               <th>TOTAL HOURS</th>
-              <th className="no-print">ACTION</th>
             </tr>
           </thead>
           <tbody>
-            {currentItems.length > 0 ? (
-              currentItems.map((log, idx) => (
+            {loading ? (
+              <tr>
+                <td colSpan="6">Loading...</td>
+              </tr>
+            ) : summary.length ? (
+              summary.map((row, idx) => (
                 <tr key={idx}>
-                  <td>{new Date(log.date).toLocaleDateString("en-US")}</td>
-                  <td>{log.employee_id}</td>
-                  <td>{log.fullname}</td>
-                  <td>{log.temperature || "-"}</td>
-                  <td>{log.status || "-"}</td>
-                  <td>
-                    {editingIndex === idx ? (
-                      <input
-                        type="time"
-                        value={newTimeIn}
-                        onChange={(e) => setNewTimeIn(e.target.value)}
-                        step="60"
-                      />
-                    ) : log.time_in ? (
-                      log.time_in.slice(0, 5)
-                    ) : (
-                      "-"
-                    )}
-                  </td>
-                  <td>
-                    {editingIndex === idx ? (
-                      <input
-                        type="time"
-                        value={newTimeOut}
-                        onChange={(e) => setNewTimeOut(e.target.value)}
-                        step="60"
-                      />
-                    ) : log.time_out ? (
-                      log.time_out.slice(0, 5)
-                    ) : (
-                      "-"
-                    )}
-                  </td>
-                  <td>{log.working_hours || "-"}</td>
-                  <td className="no-print">
-                    {editingIndex === idx ? (
-                      <>
-                        <button
-                          className="save-btn"
-                          onClick={() => handleSaveClick(idx)}
-                        >
-                          Save
-                        </button>
-                        <button
-                          className="cancel-btn"
-                          onClick={handleCancelClick}
-                        >
-                          Cancel
-                        </button>
-                      </>
-                    ) : (
-                      <button
-                        className="edit-btn"
-                        onClick={() => handleEditClick(idx)}
-                      >
-                        Edit
-                      </button>
-                    )}
-                  </td>
+                  <td>{row.employee_id}</td>
+                  <td>{row.fullname}</td>
+                  <td>{row.days_present}</td>
+                  <td>{row.late_count}</td>
+                  <td>{row.absences}</td>
+                  <td>{row.total_hours}</td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan="9">No records found</td>
+                <td colSpan="6">No data available</td>
               </tr>
             )}
           </tbody>
         </table>
-
-        <div className="pagination-print-wrapper no-print">
-          <div className="entries-info">
-            {totalPages > 0
-              ? `Showing ${currentPage} of ${totalPages}`
-              : "No pages to display"}
-          </div>
-
-          <div className="buttons-group">
-            <button className="print-button" onClick={handlePrint}>
-              Print
-            </button>
-            <button
-              className="page-buttonP"
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage((prev) => prev - 1)}
-            >
-              Previous
-            </button>
-            <span className="page-number">{currentPage}</span>
-            <button
-              className="page-buttonN"
-              disabled={currentPage === totalPages || totalPages === 0}
-              onClick={() => setCurrentPage((prev) => prev + 1)}
-            >
-              Next
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );
 };
 
-export default Report;
+export default Summary;
