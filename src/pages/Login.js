@@ -38,10 +38,10 @@ function Login({ onLoginChange }) {
         }
 
         // Redirect based on role
-        if (data.role.toLowerCase() === 'admin') {
-          navigate('/dashboard'); // Admin dashboard
-        } else if (data.role.toLowerCase() === 'employee') {
-          navigate('/employee-portal'); // Employee portal
+        if (data.role === 'admin') {
+          navigate('/dashboard');
+        } else if (data.role === 'employee') {
+          navigate('/employee-portal');
         } else {
           setError("Unknown role");
         }
