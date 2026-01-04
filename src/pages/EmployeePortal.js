@@ -9,8 +9,9 @@ function EmployeePortal() {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem("admins"));
 
-  const [employee, setEmployee] = useState(user || null); // show portal immediately
+  const [employee, setEmployee] = useState(user || null);
   const [attendanceLogs, setAttendanceLogs] = useState([]);
+  const [todayAttendance, setTodayAttendance] = useState(null);
   const [statusMessage, setStatusMessage] = useState("");
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -41,7 +42,7 @@ function EmployeePortal() {
         const emp = res.data.find(
           e => Number(e.employee_id) === Number(user.employee_id)
         );
-        setEmployee(emp || user); // use user as fallback
+        setEmployee(emp || user);
       })
       .catch(err => console.error("❌ Employee fetch error:", err));
   }, [user]);
@@ -55,6 +56,11 @@ function EmployeePortal() {
         a => Number(a.employee_id) === Number(employee.employee_id)
       );
       setAttendanceLogs(logs);
+
+      // Find today's record
+      const today = new Date().toISOString().split("T")[0];
+      const todayRecord = logs.find(log => log.date?.startsWith(today));
+      setTodayAttendance(todayRecord || null);
     } catch (err) {
       console.error("❌ Attendance fetch error:", err.response || err);
     }
@@ -66,15 +72,19 @@ function EmployeePortal() {
 
   /* ================= TIME IN ================= */
   const handleTimeIn = async () => {
-    if (!employee?.employee_id) return;
+    if (!todayAttendance) {
+      setStatusMessage("❌ No attendance record found for today.");
+      return;
+    }
+
     try {
-      const res = await axios.post(`${API_BASE}/attendance/time_in`, {
-        employee_id: employee.employee_id,
-        fullname: employee.name, // check backend key
-      });
+      const res = await axios.put(
+        `${API_BASE}/attendance/${todayAttendance.attendance_id}/time-in`,
+        { time_in: currentTime.toLocaleTimeString("en-GB") } // format HH:MM:SS
+      );
       console.log("Time-in response:", res.data);
       setStatusMessage("🟢 Time-in recorded.");
-      fetchAttendanceLogs(); // refresh logs immediately
+      fetchAttendanceLogs();
     } catch (err) {
       console.error("Time-in error:", err.response || err);
       setStatusMessage("❌ Failed to time-in.");
@@ -83,14 +93,34 @@ function EmployeePortal() {
 
   /* ================= TIME OUT ================= */
   const handleTimeOut = async () => {
-    if (!employee?.employee_id) return;
+    if (!todayAttendance) {
+      setStatusMessage("❌ No attendance record found for today.");
+      return;
+    }
+
     try {
-      const res = await axios.post(`${API_BASE}/attendance/time_out`, {
-        employee_id: employee.employee_id,
-      });
+      // Calculate working hours if needed
+      let timeInSeconds = 0;
+      if (todayAttendance.time_in) {
+        const parts = todayAttendance.time_in.split(":").map(Number);
+        timeInSeconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
+      }
+
+      const nowParts = currentTime.toLocaleTimeString("en-GB").split(":").map(Number);
+      const nowSeconds = nowParts[0] * 3600 + nowParts[1] * 60 + nowParts[2];
+      let workingHours = Math.max(0, (nowSeconds - timeInSeconds) / 3600);
+      workingHours = Math.round(workingHours * 100) / 100; // round to 2 decimals
+
+      const res = await axios.put(
+        `${API_BASE}/attendance/${todayAttendance.attendance_id}`,
+        {
+          time_out: currentTime.toLocaleTimeString("en-GB"),
+          working_hours: workingHours,
+        }
+      );
       console.log("Time-out response:", res.data);
       setStatusMessage("🔴 Time-out recorded.");
-      fetchAttendanceLogs(); // refresh logs immediately
+      fetchAttendanceLogs();
     } catch (err) {
       console.error("Time-out error:", err.response || err);
       setStatusMessage("❌ Failed to time-out.");
@@ -163,9 +193,9 @@ function EmployeePortal() {
                 <tr key={i}>
                   <td>{log.date ? new Date(log.date).toLocaleDateString() : "-"}</td>
                   <td>{log.time_in || "-"}</td>
-                  <td>{log.in_status || "-"}</td>
+                  <td>{log.status || "-"}</td>
                   <td>{log.time_out || "-"}</td>
-                  <td>{log.out_status || "-"}</td>
+                  <td>{log.working_hours || "-"}</td>
                 </tr>
               ))}
             </tbody>
