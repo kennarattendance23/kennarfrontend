@@ -77,7 +77,7 @@ const AppWrapper = () => {
             element={isLoggedIn ? <Summary /> : <Navigate to="/login" />}
           />
            <Route
-            path="/employee-portal"
+            path="/employeeortal"
             element={isLoggedIn ? <EmployeePortal /> : <Navigate to="/login" />}
           />
           <Route path="*" element={<Navigate to="/login" replace />} />
