@@ -8,6 +8,7 @@ import User from './pages/User';
 import Report from './pages/Report';
 import Login from './pages/Login';
 import Summary from './pages/Summary';
+import EmployeePortal from './pages/EmployeePortal';
 import './App.css';
 
 const AppWrapper = () => {
@@ -74,6 +75,10 @@ const AppWrapper = () => {
           <Route
             path="/summary"
             element={isLoggedIn ? <Summary /> : <Navigate to="/login" />}
+          />
+           <Route
+            path="/employee-portal"
+            element={isLoggedIn ? <EmployeePortal /> : <Navigate to="/login" />}
           />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
