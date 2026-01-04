@@ -44,7 +44,7 @@ function EmployeePortal() {
         );
         setEmployee(emp || user);
       })
-      .catch(err => console.error("❌ Employee fetch error:", err));
+      .catch(err => console.error("❌ Employee fetch error:", err.response || err));
   }, [user]);
 
   /* ================= FETCH ATTENDANCE ================= */
@@ -59,10 +59,21 @@ function EmployeePortal() {
 
       // Find today's record
       const today = new Date().toISOString().split("T")[0];
-      const todayRecord = logs.find(log => log.date?.startsWith(today));
-      setTodayAttendance(todayRecord || null);
+      let todayRecord = logs.find(log => log.date?.startsWith(today));
+
+      // If no record, create one automatically
+      if (!todayRecord) {
+        const createRes = await axios.post(`${API_BASE}/attendance`, {
+          employee_id: employee.employee_id,
+          fullname: employee.name,
+          date: today,
+        });
+        todayRecord = createRes.data; // assume backend returns the new record
+      }
+
+      setTodayAttendance(todayRecord);
     } catch (err) {
-      console.error("❌ Attendance fetch error:", err.response || err);
+      console.error("❌ Attendance fetch/create error:", err.response || err);
     }
   };
 
@@ -78,9 +89,10 @@ function EmployeePortal() {
     }
 
     try {
+      const timeString = currentTime.toLocaleTimeString("en-GB"); // HH:MM:SS
       const res = await axios.put(
         `${API_BASE}/attendance/${todayAttendance.attendance_id}/time-in`,
-        { time_in: currentTime.toLocaleTimeString("en-GB") } // format HH:MM:SS
+        { time_in: timeString }
       );
       console.log("Time-in response:", res.data);
       setStatusMessage("🟢 Time-in recorded.");
@@ -99,25 +111,26 @@ function EmployeePortal() {
     }
 
     try {
-      // Calculate working hours if needed
-      let timeInSeconds = 0;
-      if (todayAttendance.time_in) {
-        const parts = todayAttendance.time_in.split(":").map(Number);
-        timeInSeconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
-      }
+      const timeOutString = currentTime.toLocaleTimeString("en-GB"); // HH:MM:SS
 
-      const nowParts = currentTime.toLocaleTimeString("en-GB").split(":").map(Number);
-      const nowSeconds = nowParts[0] * 3600 + nowParts[1] * 60 + nowParts[2];
-      let workingHours = Math.max(0, (nowSeconds - timeInSeconds) / 3600);
-      workingHours = Math.round(workingHours * 100) / 100; // round to 2 decimals
+      // Calculate working hours
+      let workingHours = 0;
+      if (todayAttendance.time_in) {
+        const [h, m, s] = todayAttendance.time_in.split(":").map(Number);
+        const timeInSec = h * 3600 + m * 60 + s;
+
+        const [oh, om, os] = timeOutString.split(":").map(Number);
+        const timeOutSec = oh * 3600 + om * 60 + os;
+
+        workingHours = Math.max(0, (timeOutSec - timeInSec) / 3600);
+        workingHours = Math.round(workingHours * 100) / 100; // round 2 decimals
+      }
 
       const res = await axios.put(
         `${API_BASE}/attendance/${todayAttendance.attendance_id}`,
-        {
-          time_out: currentTime.toLocaleTimeString("en-GB"),
-          working_hours: workingHours,
-        }
+        { time_out: timeOutString, working_hours: workingHours }
       );
+
       console.log("Time-out response:", res.data);
       setStatusMessage("🔴 Time-out recorded.");
       fetchAttendanceLogs();
@@ -183,9 +196,9 @@ function EmployeePortal() {
               <tr>
                 <th>Date</th>
                 <th>Time In</th>
-                <th>In Status</th>
+                <th>Status</th>
                 <th>Time Out</th>
-                <th>Out Status</th>
+                <th>Working Hours</th>
               </tr>
             </thead>
             <tbody>
