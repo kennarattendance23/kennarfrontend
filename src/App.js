@@ -14,32 +14,33 @@ import './App.css';
 const AppWrapper = () => {
   const location = useLocation();
 
-  const [isLoggedIn, setIsLoggedIn] = useState(
-    !!localStorage.getItem('admins')
-  );
-  const [admin_name, setAdminName] = useState(
-    localStorage.getItem('admins') ? JSON.parse(localStorage.getItem('admins')).admin_name : null
+  const [user, setUser] = useState(
+    localStorage.getItem('admins')
+      ? JSON.parse(localStorage.getItem('admins'))
+      : null
   );
 
   useEffect(() => {
     const logoutHandler = () => {
-      setIsLoggedIn(false);
-      setAdminName(null);
-      localStorage.removeItem('admins'); 
+      setUser(null);
+      localStorage.removeItem('admins');
     };
 
     window.addEventListener('logout', logoutHandler);
     return () => window.removeEventListener('logout', logoutHandler);
   }, []);
 
-  const onLoginChange = (user) => {
-    if (user) {
-      setIsLoggedIn(true);
-      setAdminName(user.admin_name);
-      localStorage.setItem('admins', JSON.stringify(user)); 
+  const onLoginChange = (userData) => {
+    if (userData) {
+      const normalizedUser = {
+        ...userData,
+        role: String(userData.role).trim().toLowerCase()
+      };
+
+      setUser(normalizedUser);
+      localStorage.setItem('admins', JSON.stringify(normalizedUser));
     } else {
-      setIsLoggedIn(false);
-      setAdminName(null);
+      setUser(null);
       localStorage.removeItem('admins');
     }
   };
@@ -48,39 +49,85 @@ const AppWrapper = () => {
 
   return (
     <div className="app-layout" style={{ display: 'flex' }}>
-      {!isLoginPage && isLoggedIn && <Sidebar admin_name={admin_name} />}
+      {/* Sidebar ONLY for admin */}
+      {!isLoginPage && user?.role === 'admin' && (
+        <Sidebar admin_name={user.admin_name} />
+      )}
 
       <div className="main-content" style={{ flex: 1, padding: '20px' }}>
         <Routes>
-          <Route path="/" element={<Navigate to="/login" replace />} />
+
+          {/* Root */}
+          <Route
+            path="/"
+            element={
+              user
+                ? user.role === 'admin'
+                  ? <Navigate to="/dashboard" replace />
+                  : <Navigate to="/employee-portal" replace />
+                : <Navigate to="/login" replace />
+            }
+          />
 
           <Route path="/login" element={<Login onLoginChange={onLoginChange} />} />
 
+          {/* ADMIN ROUTES */}
           <Route
             path="/dashboard"
-            element={isLoggedIn ? <Dashboard /> : <Navigate to="/login" />}
+            element={
+              user?.role === 'admin'
+                ? <Dashboard />
+                : <Navigate to="/employee-portal" replace />
+            }
           />
+
           <Route
             path="/employee"
-            element={isLoggedIn ? <Employee /> : <Navigate to="/login" />}
+            element={
+              user?.role === 'admin'
+                ? <Employee />
+                : <Navigate to="/employee-portal" replace />
+            }
           />
+
           <Route
             path="/user"
-            element={isLoggedIn ? <User /> : <Navigate to="/login" />}
+            element={
+              user?.role === 'admin'
+                ? <User />
+                : <Navigate to="/employee-portal" replace />
+            }
           />
+
           <Route
             path="/report"
-            element={isLoggedIn ? <Report /> : <Navigate to="/login" />}
+            element={
+              user?.role === 'admin'
+                ? <Report />
+                : <Navigate to="/employee-portal" replace />
+            }
           />
+
           <Route
             path="/summary"
-            element={isLoggedIn ? <Summary /> : <Navigate to="/login" />}
+            element={
+              user?.role === 'admin'
+                ? <Summary />
+                : <Navigate to="/employee-portal" replace />
+            }
           />
+
+          {/* EMPLOYEE ROUTE */}
           <Route
             path="/employee-portal"
-            element={isLoggedIn ? <EmployeePortal /> : <Navigate to="/login" />}
+            element={
+              user?.role === 'employee'
+                ? <EmployeePortal />
+                : <Navigate to="/dashboard" replace />
+            }
           />
-          <Route path="*" element={<Navigate to="/login" replace />} />
+
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
     </div>
@@ -94,5 +141,3 @@ const App = () => (
 );
 
 export default App;
-
-
