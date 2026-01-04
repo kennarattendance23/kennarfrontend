@@ -7,32 +7,18 @@ const API_BASE = "https://kennarbackend.onrender.com/api";
 
 function EmployeePortal() {
   const navigate = useNavigate();
-
-  // ✅ CORRECT STORAGE KEY
   const user = JSON.parse(localStorage.getItem("admins"));
 
-  const [employee, setEmployee] = useState(null);
+  const [employee, setEmployee] = useState(user || null); // show portal immediately
   const [attendanceLogs, setAttendanceLogs] = useState([]);
   const [statusMessage, setStatusMessage] = useState("");
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [loading, setLoading] = useState(true);
 
   /* ================= AUTH + ROLE GUARD ================= */
   useEffect(() => {
-    if (!user) {
-      navigate("/login", { replace: true });
-      return;
-    }
-
-    if (user.role !== "employee") {
-      navigate("/dashboard", { replace: true });
-      return;
-    }
-
-    if (!user.employee_id) {
-      console.error("❌ Missing employee_id in login data");
-      navigate("/login", { replace: true });
-    }
+    if (!user) navigate("/login", { replace: true });
+    if (user?.role !== "employee") navigate("/dashboard", { replace: true });
+    if (!user?.employee_id) navigate("/login", { replace: true });
   }, [user, navigate]);
 
   /* ================= CLOCK ================= */
@@ -43,7 +29,6 @@ function EmployeePortal() {
       });
       setCurrentTime(new Date(manilaTime));
     }, 1000);
-
     return () => clearInterval(interval);
   }, []);
 
@@ -56,18 +41,9 @@ function EmployeePortal() {
         const emp = res.data.find(
           e => Number(e.employee_id) === Number(user.employee_id)
         );
-
-        if (!emp) {
-          console.error("❌ Employee not found for ID:", user.employee_id);
-        }
-
-        setEmployee(emp || null);
-        setLoading(false);
+        setEmployee(emp || user); // use user as fallback
       })
-      .catch(err => {
-        console.error("❌ Employee fetch error:", err);
-        setLoading(false);
-      });
+      .catch(err => console.error("❌ Employee fetch error:", err));
   }, [user]);
 
   /* ================= FETCH ATTENDANCE ================= */
@@ -81,9 +57,7 @@ function EmployeePortal() {
         );
         setAttendanceLogs(logs);
       })
-      .catch(err => {
-        console.error("❌ Attendance fetch error:", err);
-      });
+      .catch(err => console.error("❌ Attendance fetch error:", err));
   }, [employee, statusMessage]);
 
   /* ================= TIME IN ================= */
@@ -111,15 +85,6 @@ function EmployeePortal() {
     }
   };
 
-  /* ================= RENDER STATES ================= */
-  if (loading) {
-    return <div style={{ padding: 40 }}>Loading employee portal...</div>;
-  }
-
-  if (!employee) {
-    return <div style={{ padding: 40 }}>Employee record not found.</div>;
-  }
-
   /* ================= UI ================= */
   return (
     <div className="dashboard-main">
@@ -139,15 +104,15 @@ function EmployeePortal() {
       <div className="stats-grid">
         <div className="stat-box">
           <strong>Employee ID</strong>
-          <p>{employee.employee_id}</p>
+          <p>{employee?.employee_id || "-"}</p>
         </div>
         <div className="stat-box">
           <strong>Name</strong>
-          <p>{employee.name}</p>
+          <p>{employee?.name || "-"}</p>
         </div>
         <div className="stat-box">
           <strong>Status</strong>
-          <p>{employee.status}</p>
+          <p>{employee?.status || "-"}</p>
         </div>
       </div>
 
@@ -170,28 +135,30 @@ function EmployeePortal() {
 
       <div className="report_table" style={{ marginTop: 40 }}>
         <h3>Your Attendance Logs</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Time In</th>
-              <th>In Status</th>
-              <th>Time Out</th>
-              <th>Out Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {attendanceLogs.map((log, i) => (
-              <tr key={i}>
-                <td>{log.date ? new Date(log.date).toLocaleDateString() : "-"}</td>
-                <td>{log.time_in || "-"}</td>
-                <td>{log.in_status || "-"}</td>
-                <td>{log.time_out || "-"}</td>
-                <td>{log.out_status || "-"}</td>
+        <div className="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Time In</th>
+                <th>In Status</th>
+                <th>Time Out</th>
+                <th>Out Status</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {attendanceLogs.map((log, i) => (
+                <tr key={i}>
+                  <td>{log.date ? new Date(log.date).toLocaleDateString() : "-"}</td>
+                  <td>{log.time_in || "-"}</td>
+                  <td>{log.in_status || "-"}</td>
+                  <td>{log.time_out || "-"}</td>
+                  <td>{log.out_status || "-"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
