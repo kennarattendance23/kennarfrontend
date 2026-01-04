@@ -11,6 +11,8 @@ function Login({ onLoginChange }) {
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    setError(''); // clear previous errors
+
     try {
       const res = await fetch('https://kennarbackend.onrender.com/api/login', {
         method: 'POST',
@@ -20,35 +22,41 @@ function Login({ onLoginChange }) {
 
       const data = await res.json();
 
+      console.log("Login response from backend:", data); // DEBUG: check role
+
       if (data.success) {
-        // Save user info
+        // Normalize role: trim spaces and lowercase
+        const role = data.role.trim().toLowerCase();
+
+        // Save user info in localStorage
         localStorage.setItem('user', JSON.stringify({
           username,
           admin_name: data.admin_name,
           employee_id: data.employee_id,
-          role: data.role
+          role
         }));
 
         if (onLoginChange) {
           onLoginChange({
             admin_name: data.admin_name,
             employee_id: data.employee_id,
-            role: data.role
+            role
           });
         }
 
         // Redirect based on role
-        if (data.role === 'admin') {
+        if (role === 'admin') {
           navigate('/dashboard');
-        } else if (data.role === 'employee') {
+        } else if (role === 'employee') {
           navigate('/employee-portal');
         } else {
-          setError("Unknown role");
+          setError("Unknown role received from backend");
         }
       } else {
         setError(data.message || 'Login failed');
       }
     } catch (err) {
+      console.error("Login fetch error:", err);
       setError('Error logging in: ' + err.message);
     }
   };
