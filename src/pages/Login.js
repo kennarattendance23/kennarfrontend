@@ -11,7 +11,7 @@ function Login({ onLoginChange }) {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    setError('');
+    setError(''); // clear previous errors
 
     try {
       const res = await fetch('https://kennarbackend.onrender.com/api/login', {
@@ -21,46 +21,43 @@ function Login({ onLoginChange }) {
       });
 
       const data = await res.json();
-      console.log("LOGIN RESPONSE:", data);
+      console.log("Login response from backend:", data); // DEBUG
 
-      if (!data.success) {
-        setError(data.message || 'Login failed');
-        return;
-      }
+      if (data.success) {
+        // Normalize role: trim spaces and lowercase
+        const role = data.role?.trim().toLowerCase();
 
-      // ✅ FORCE role normalization AGAIN (double safety)
-      const role = String(data.role).trim().toLowerCase();
+        // Save user info in localStorage
+        localStorage.setItem('user', JSON.stringify({
+          username,
+          admin_name: data.admin_name,
+          employee_id: data.employee_id,
+          role
+        }));
 
-      console.log("FINAL ROLE USED:", role);
+        if (onLoginChange) {
+          onLoginChange({
+            admin_name: data.admin_name,
+            employee_id: data.employee_id,
+            role
+          });
+        }
 
-      // 🔥 CLEAR OLD SESSION (THIS IS CRITICAL)
-      localStorage.removeItem('user');
-
-      const userData = {
-        username,
-        admin_name: data.admin_name,
-        employee_id: data.employee_id,
-        role
-      };
-
-      localStorage.setItem('user', JSON.stringify(userData));
-
-      if (onLoginChange) {
-        onLoginChange(userData);
-      }
-
-      // ✅ ONLY redirect here
-      if (role === 'admin') {
-        navigate('/dashboard', { replace: true });
-      } else if (role === 'employee') {
-        navigate('/employee-portal', { replace: true });
+        // Redirect based on role
+        if (role === 'admin') {
+          navigate('/dashboard');
+        } else if (role === 'employee') {
+          navigate('/employee-portal');
+        } else {
+          console.error("Unknown role received from backend:", data.role);
+          setError("Unknown role received. Contact admin.");
+        }
       } else {
-        setError("Invalid role assigned to account");
+        setError(data.message || 'Login failed');
       }
-
     } catch (err) {
-      console.error("LOGIN FETCH ERROR:", err);
-      setError("Server error. Try again.");
+      console.error("Login fetch error:", err);
+      setError('Error logging in: ' + err.message);
     }
   };
 
@@ -68,14 +65,13 @@ function Login({ onLoginChange }) {
     <div className="app-bg">
       <div className="login-box">
         <h2>Login</h2>
-
         <form onSubmit={handleLogin}>
           <input
             type="text"
-            placeholder="Email"
+            placeholder="Username or Email"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-          />
+          /><br />
 
           <div className="password-wrapper">
             <input
@@ -86,13 +82,14 @@ function Login({ onLoginChange }) {
             />
             <button
               type="button"
+              className="toggle-password-login"
               onClick={() => setShowPassword(!showPassword)}
             >
-              👁
+              <i className={`fa-solid ${showPassword ? 'fa-eye' : 'fa-eye-slash'}`}></i>
             </button>
           </div>
 
-          <button type="submit">Login</button>
+          <button type="submit" className="login-btn">Login</button>
         </form>
 
         {error && <p className="error-message">{error}</p>}
