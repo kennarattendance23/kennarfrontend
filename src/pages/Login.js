@@ -21,12 +21,11 @@ function Login({ onLoginChange }) {
       });
 
       const data = await res.json();
-
-      console.log("Login response from backend:", data); // DEBUG: check role
+      console.log("Login response from backend:", data); // DEBUG
 
       if (data.success) {
         // Normalize role: trim spaces and lowercase
-        const role = data.role.trim().toLowerCase();
+        const role = data.role?.trim().toLowerCase();
 
         // Save user info in localStorage
         localStorage.setItem('user', JSON.stringify({
@@ -50,7 +49,8 @@ function Login({ onLoginChange }) {
         } else if (role === 'employee') {
           navigate('/employee-portal');
         } else {
-          setError("Unknown role received from backend");
+          console.error("Unknown role received from backend:", data.role);
+          setError("Unknown role received. Contact admin.");
         }
       } else {
         setError(data.message || 'Login failed');
@@ -68,7 +68,7 @@ function Login({ onLoginChange }) {
         <form onSubmit={handleLogin}>
           <input
             type="text"
-            placeholder="Username"
+            placeholder="Username or Email"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
           /><br />
