@@ -47,40 +47,52 @@ function EmployeePortal() {
   }, [user]);
 
   /* ================= FETCH ATTENDANCE ================= */
-  useEffect(() => {
+  const fetchAttendanceLogs = async () => {
     if (!employee?.employee_id) return;
+    try {
+      const res = await axios.get(`${API_BASE}/attendance`);
+      const logs = res.data.filter(
+        a => Number(a.employee_id) === Number(employee.employee_id)
+      );
+      setAttendanceLogs(logs);
+    } catch (err) {
+      console.error("❌ Attendance fetch error:", err.response || err);
+    }
+  };
 
-    axios.get(`${API_BASE}/attendance`)
-      .then(res => {
-        const logs = res.data.filter(
-          a => Number(a.employee_id) === Number(employee.employee_id)
-        );
-        setAttendanceLogs(logs);
-      })
-      .catch(err => console.error("❌ Attendance fetch error:", err));
-  }, [employee, statusMessage]);
+  useEffect(() => {
+    fetchAttendanceLogs();
+  }, [employee]);
 
   /* ================= TIME IN ================= */
   const handleTimeIn = async () => {
+    if (!employee?.employee_id) return;
     try {
-      await axios.post(`${API_BASE}/attendance/time_in`, {
+      const res = await axios.post(`${API_BASE}/attendance/time_in`, {
         employee_id: employee.employee_id,
-        fullname: employee.name,
+        fullname: employee.name, // check backend key
       });
+      console.log("Time-in response:", res.data);
       setStatusMessage("🟢 Time-in recorded.");
-    } catch {
+      fetchAttendanceLogs(); // refresh logs immediately
+    } catch (err) {
+      console.error("Time-in error:", err.response || err);
       setStatusMessage("❌ Failed to time-in.");
     }
   };
 
   /* ================= TIME OUT ================= */
   const handleTimeOut = async () => {
+    if (!employee?.employee_id) return;
     try {
-      await axios.post(`${API_BASE}/attendance/time_out`, {
+      const res = await axios.post(`${API_BASE}/attendance/time_out`, {
         employee_id: employee.employee_id,
       });
+      console.log("Time-out response:", res.data);
       setStatusMessage("🔴 Time-out recorded.");
-    } catch {
+      fetchAttendanceLogs(); // refresh logs immediately
+    } catch (err) {
+      console.error("Time-out error:", err.response || err);
       setStatusMessage("❌ Failed to time-out.");
     }
   };
