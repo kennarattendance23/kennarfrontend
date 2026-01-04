@@ -12,12 +12,12 @@ function EmployeePortal() {
   const user = JSON.parse(localStorage.getItem("admins"));
 
   const [employee, setEmployee] = useState(null);
+  const [attendanceLogs, setAttendanceLogs] = useState([]);
   const [statusMessage, setStatusMessage] = useState("");
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [attendanceLogs, setAttendanceLogs] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // 🔐 AUTH + ROLE GUARD
+  /* ================= AUTH + ROLE GUARD ================= */
   useEffect(() => {
     if (!user) {
       navigate("/login", { replace: true });
@@ -28,9 +28,14 @@ function EmployeePortal() {
       navigate("/dashboard", { replace: true });
       return;
     }
+
+    if (!user.employee_id) {
+      console.error("❌ Missing employee_id in login data");
+      navigate("/login", { replace: true });
+    }
   }, [user, navigate]);
 
-  // ⏰ CLOCK (MANILA TIME)
+  /* ================= CLOCK ================= */
   useEffect(() => {
     const interval = setInterval(() => {
       const manilaTime = new Date().toLocaleString("en-US", {
@@ -42,43 +47,46 @@ function EmployeePortal() {
     return () => clearInterval(interval);
   }, []);
 
-  // 👤 FETCH EMPLOYEE BY EMAIL
+  /* ================= FETCH EMPLOYEE ================= */
   useEffect(() => {
-    if (!user?.username) return;
+    if (!user?.employee_id) return;
 
     axios.get(`${API_BASE}/employees`)
       .then(res => {
         const emp = res.data.find(
-          e => e.email === user.username
+          e => Number(e.employee_id) === Number(user.employee_id)
         );
+
+        if (!emp) {
+          console.error("❌ Employee not found for ID:", user.employee_id);
+        }
 
         setEmployee(emp || null);
         setLoading(false);
       })
       .catch(err => {
-        console.error("❌ Employee fetch failed:", err);
+        console.error("❌ Employee fetch error:", err);
         setLoading(false);
       });
   }, [user]);
 
-  // 📋 FETCH ATTENDANCE
+  /* ================= FETCH ATTENDANCE ================= */
   useEffect(() => {
     if (!employee?.employee_id) return;
 
     axios.get(`${API_BASE}/attendance`)
       .then(res => {
         const logs = res.data.filter(
-          e => e.employee_id === employee.employee_id
+          a => Number(a.employee_id) === Number(employee.employee_id)
         );
         setAttendanceLogs(logs);
       })
       .catch(err => {
-        console.error("❌ Attendance fetch failed:", err);
-        setAttendanceLogs([]);
+        console.error("❌ Attendance fetch error:", err);
       });
   }, [employee, statusMessage]);
 
-  // 🕒 TIME IN
+  /* ================= TIME IN ================= */
   const handleTimeIn = async () => {
     try {
       await axios.post(`${API_BASE}/attendance/time_in`, {
@@ -86,26 +94,24 @@ function EmployeePortal() {
         fullname: employee.name,
       });
       setStatusMessage("🟢 Time-in recorded.");
-    } catch (err) {
-      console.error(err);
+    } catch {
       setStatusMessage("❌ Failed to time-in.");
     }
   };
 
-  // 🏁 TIME OUT
+  /* ================= TIME OUT ================= */
   const handleTimeOut = async () => {
     try {
       await axios.post(`${API_BASE}/attendance/time_out`, {
         employee_id: employee.employee_id,
       });
       setStatusMessage("🔴 Time-out recorded.");
-    } catch (err) {
-      console.error(err);
+    } catch {
       setStatusMessage("❌ Failed to time-out.");
     }
   };
 
-  // ⏳ LOADING STATE
+  /* ================= RENDER STATES ================= */
   if (loading) {
     return <div style={{ padding: 40 }}>Loading employee portal...</div>;
   }
@@ -114,6 +120,7 @@ function EmployeePortal() {
     return <div style={{ padding: 40 }}>Employee record not found.</div>;
   }
 
+  /* ================= UI ================= */
   return (
     <div className="dashboard-main">
       <div className="header">
@@ -130,24 +137,32 @@ function EmployeePortal() {
       </div>
 
       <div className="stats-grid">
-        <div className="stat-box"><strong>ID</strong><p>{employee.employee_id}</p></div>
-        <div className="stat-box"><strong>Name</strong><p>{employee.name}</p></div>
-        <div className="stat-box"><strong>Status</strong><p>{employee.status}</p></div>
+        <div className="stat-box">
+          <strong>Employee ID</strong>
+          <p>{employee.employee_id}</p>
+        </div>
+        <div className="stat-box">
+          <strong>Name</strong>
+          <p>{employee.name}</p>
+        </div>
+        <div className="stat-box">
+          <strong>Status</strong>
+          <p>{employee.status}</p>
+        </div>
       </div>
 
       <div className="calendar_clock">
-        <div className="calendars">
+        <div>
           <h3>Current Day</h3>
           <p>{currentTime.toDateString()}</p>
         </div>
-
-        <div className="clocks">
+        <div>
           <h3>Current Time</h3>
           <p>{currentTime.toLocaleTimeString()}</p>
         </div>
       </div>
 
-      <div style={{ marginTop: 40, textAlign: "center" }}>
+      <div style={{ marginTop: 30, textAlign: "center" }}>
         <button onClick={handleTimeIn} className="in-button">🕒 Time In</button>
         <button onClick={handleTimeOut} className="out-button">🏁 Time Out</button>
         <p>{statusMessage}</p>
