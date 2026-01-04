@@ -21,30 +21,17 @@ function Login({ onLoginChange }) {
       const data = await res.json();
 
       if (data.success) {
-        // Save user info
-        localStorage.setItem('user', JSON.stringify({
+        localStorage.setItem('admins', JSON.stringify({
           username,
           admin_name: data.admin_name,
-          employee_id: data.employee_id,
-          role: data.role
+          employee_id: data.employee_id
         }));
 
         if (onLoginChange) {
-          onLoginChange({
-            admin_name: data.admin_name,
-            employee_id: data.employee_id,
-            role: data.role
-          });
+          onLoginChange({ admin_name: data.admin_name, employee_id: data.employee_id });
         }
 
-        // Redirect based on role
-        if (data.role.toLowerCase() === 'admin') {
-          navigate('/dashboard'); // Admin dashboard
-        } else if (data.role.toLowerCase() === 'employee') {
-          navigate('/employee-portal'); // Employee portal
-        } else {
-          setError("Unknown role");
-        }
+        navigate('/dashboard');
       } else {
         setError(data.message || 'Login failed');
       }
