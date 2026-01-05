@@ -36,6 +36,7 @@ const Report = () => {
       const logDate = new Date(log.date);
       const from = fromDate ? new Date(fromDate + "T00:00:00") : null;
       const to = toDate ? new Date(toDate + "T23:59:59") : null;
+
       return (!from || logDate >= from) && (!to || logDate <= to);
     });
 
@@ -46,20 +47,37 @@ const Report = () => {
   const totalPages = Math.ceil(filteredLogs.length / itemsPerPage);
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filteredLogs.slice(indexOfFirstItem, indexOfLastItem);
+  const currentItems = filteredLogs.slice(
+    indexOfFirstItem,
+    indexOfLastItem
+  );
 
   const handlePrint = () => {
     const printWindow = window.open("", "_blank");
     const tableHTML = `
       <html>
         <head>
-          <title>Attendance Report</title>
+          <title>Attendance Record</title>
           <style>
-            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; }
-            table { width: 100%; border-collapse: collapse; text-align: center; }
-            th, td { border: 1px solid #000; padding: 8px; }
-            th { background: #59a5f0; }
-            td { background: #b3d9ff; }
+            body {
+              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+              padding: 20px;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              text-align: center;
+            }
+            th, td {
+              border: 1px solid #000;
+              padding: 8px;
+            }
+            th {
+              background: #59a5f0;
+            }
+            td {
+              background: #b3d9ff;
+            }
           </style>
         </head>
         <body>
@@ -71,8 +89,7 @@ const Report = () => {
                 <th>EMPLOYEE ID</th>
                 <th>FULLNAME</th>
                 <th>TEMPERATURE</th>
-                <th>ATTENDANCE STATUS</th>
-                <th>APPROVAL STATUS</th>
+                <th>STATUS</th>
                 <th>TIME-IN</th>
                 <th>TIME-OUT</th>
                 <th>NO. OF HOURS</th>
@@ -87,8 +104,7 @@ const Report = () => {
                       <td>${log.employee_id}</td>
                       <td>${log.fullname}</td>
                       <td>${log.temperature || "-"}</td>
-                      <td>${log.attendance_status || "-"}</td>
-                      <td>${log.approval_status || "Pending"}</td>
+                      <td>${log.status || "-"}</td>
                       <td>${log.time_in || "-"}</td>
                       <td>${log.time_out || "-"}</td>
                       <td>${log.working_hours || "-"}</td>
@@ -104,51 +120,6 @@ const Report = () => {
     printWindow.document.write(tableHTML);
     printWindow.document.close();
     printWindow.print();
-  };
-
-  const handleApproval = async (attendanceId, action) => {
-    try {
-      // Optimistic UI update
-      setFilteredLogs((prev) =>
-        prev.map((log) =>
-          log.attendance_id === attendanceId
-            ? { ...log, approval_status: action === "approve" ? "Approved" : "Rejected" }
-            : log
-        )
-      );
-
-      await axios.put(`${API_URL}/${attendanceId}/${action}`);
-    } catch (error) {
-      console.error(`Failed to ${action} request:`, error);
-      alert(`Failed to ${action} request.`);
-      fetchLogs(); // revert if error
-    }
-  };
-
-  // Helper for color-coded status
-  const getAttendanceColor = (status) => {
-    switch (status) {
-      case "Present":
-        return "green";
-      case "Late":
-        return "orange";
-      case "Absent":
-        return "red";
-      default:
-        return "black";
-    }
-  };
-
-  const getApprovalColor = (status) => {
-    switch (status) {
-      case "Approved":
-        return "green";
-      case "Rejected":
-        return "red";
-      case "Pending":
-      default:
-        return "orange";
-    }
   };
 
   return (
@@ -187,62 +158,35 @@ const Report = () => {
               <th>EMPLOYEE ID</th>
               <th>FULLNAME</th>
               <th>TEMPERATURE</th>
-              <th>ATTENDANCE STATUS</th>
-              <th>APPROVAL STATUS</th>
+              <th>STATUS</th>
               <th>TIME-IN</th>
               <th>TIME-OUT</th>
               <th>NO. OF HOURS</th>
-              <th className="no-print">ACTION</th>
             </tr>
           </thead>
           <tbody>
             {currentItems.length > 0 ? (
-              currentItems.map((log) => (
-                <tr key={log.attendance_id}>
-                  <td>{new Date(log.date).toLocaleDateString("en-US")}</td>
+              currentItems.map((log, idx) => (
+                <tr key={idx}>
+                  <td>
+                    {new Date(log.date).toLocaleDateString("en-US")}
+                  </td>
                   <td>{log.employee_id}</td>
                   <td>{log.fullname}</td>
                   <td>{log.temperature || "-"}</td>
-                  <td style={{ color: getAttendanceColor(log.attendance_status) }}>
-                    {log.attendance_status || "-"}
+                  <td>{log.status || "-"}</td>
+                  <td>
+                    {log.time_in ? log.time_in.slice(0, 5) : "-"}
                   </td>
-                  <td style={{ color: getApprovalColor(log.approval_status || "Pending") }}>
-                    {log.approval_status || "Pending"}
+                  <td>
+                    {log.time_out ? log.time_out.slice(0, 5) : "-"}
                   </td>
-                  <td>{log.time_in ? log.time_in.slice(0, 5) : "-"}</td>
-                  <td>{log.time_out ? log.time_out.slice(0, 5) : "-"}</td>
                   <td>{log.working_hours || "-"}</td>
-                  <td className="no-print">
-                    {log.source === "employee-portal" ? (
-                      <>
-                        <button
-                          className="accept-btn"
-                          disabled={log.approval_status === "Approved" || log.approval_status === "Rejected"}
-                          onClick={() =>
-                            handleApproval(log.attendance_id, "approve")
-                          }
-                        >
-                          Accept
-                        </button>
-                        <button
-                          className="reject-btn"
-                          disabled={log.approval_status === "Approved" || log.approval_status === "Rejected"}
-                          onClick={() =>
-                            handleApproval(log.attendance_id, "reject")
-                          }
-                        >
-                          Reject
-                        </button>
-                      </>
-                    ) : (
-                      <span>-</span>
-                    )}
-                  </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan="10">No records found</td>
+                <td colSpan="8">No records found</td>
               </tr>
             )}
           </tbody>
@@ -269,7 +213,9 @@ const Report = () => {
             <span className="page-number">{currentPage}</span>
             <button
               className="page-buttonN"
-              disabled={currentPage === totalPages || totalPages === 0}
+              disabled={
+                currentPage === totalPages || totalPages === 0
+              }
               onClick={() => setCurrentPage((prev) => prev + 1)}
             >
               Next
