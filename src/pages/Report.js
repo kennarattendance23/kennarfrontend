@@ -36,7 +36,6 @@ const Report = () => {
       const logDate = new Date(log.date);
       const from = fromDate ? new Date(fromDate + "T00:00:00") : null;
       const to = toDate ? new Date(toDate + "T23:59:59") : null;
-
       return (!from || logDate >= from) && (!to || logDate <= to);
     });
 
@@ -47,37 +46,20 @@ const Report = () => {
   const totalPages = Math.ceil(filteredLogs.length / itemsPerPage);
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filteredLogs.slice(
-    indexOfFirstItem,
-    indexOfLastItem
-  );
+  const currentItems = filteredLogs.slice(indexOfFirstItem, indexOfLastItem);
 
   const handlePrint = () => {
     const printWindow = window.open("", "_blank");
     const tableHTML = `
       <html>
         <head>
-          <title>Attendance Record</title>
+          <title>Attendance Record And Approval</title>
           <style>
-            body {
-              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-              padding: 20px;
-            }
-            table {
-              width: 100%;
-              border-collapse: collapse;
-              text-align: center;
-            }
-            th, td {
-              border: 1px solid #000;
-              padding: 8px;
-            }
-            th {
-              background: #59a5f0;
-            }
-            td {
-              background: #b3d9ff;
-            }
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; }
+            table { width: 100%; border-collapse: collapse; text-align: center; }
+            th, td { border: 1px solid #000; padding: 8px; }
+            th { background: #59a5f0; }
+            td { background: #b3d9ff; }
           </style>
         </head>
         <body>
@@ -122,6 +104,17 @@ const Report = () => {
     printWindow.print();
   };
 
+  // Approve or reject request
+  const handleApproval = async (attendanceId, action) => {
+    try {
+      await axios.put(`${API_URL}/${attendanceId}/${action}`); // action = 'approve' or 'reject'
+      fetchLogs();
+    } catch (error) {
+      console.error(`Failed to ${action} request:`, error);
+      alert(`Failed to ${action} request.`);
+    }
+  };
+
   return (
     <div className="report-scroll-wrapper">
       <div className="report-container">
@@ -162,31 +155,46 @@ const Report = () => {
               <th>TIME-IN</th>
               <th>TIME-OUT</th>
               <th>NO. OF HOURS</th>
+              <th className="no-print">ACTION</th>
             </tr>
           </thead>
           <tbody>
             {currentItems.length > 0 ? (
               currentItems.map((log, idx) => (
                 <tr key={idx}>
-                  <td>
-                    {new Date(log.date).toLocaleDateString("en-US")}
-                  </td>
+                  <td>{new Date(log.date).toLocaleDateString("en-US")}</td>
                   <td>{log.employee_id}</td>
                   <td>{log.fullname}</td>
                   <td>{log.temperature || "-"}</td>
                   <td>{log.status || "-"}</td>
-                  <td>
-                    {log.time_in ? log.time_in.slice(0, 5) : "-"}
-                  </td>
-                  <td>
-                    {log.time_out ? log.time_out.slice(0, 5) : "-"}
-                  </td>
+                  <td>{log.time_in ? log.time_in.slice(0, 5) : "-"}</td>
+                  <td>{log.time_out ? log.time_out.slice(0, 5) : "-"}</td>
                   <td>{log.working_hours || "-"}</td>
+                  <td className="no-print">
+                    {log.source === "employee-portal" ? (
+                      <>
+                        <button
+                          className="accept-btn"
+                          onClick={() => handleApproval(log.attendance_id, "approve")}
+                        >
+                          Accept
+                        </button>
+                        <button
+                          className="reject-btn"
+                          onClick={() => handleApproval(log.attendance_id, "reject")}
+                        >
+                          Reject
+                        </button>
+                      </>
+                    ) : (
+                      <span>-</span> // No buttons for kiosk submissions
+                    )}
+                  </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan="8">No records found</td>
+                <td colSpan="9">No records found</td>
               </tr>
             )}
           </tbody>
@@ -213,9 +221,7 @@ const Report = () => {
             <span className="page-number">{currentPage}</span>
             <button
               className="page-buttonN"
-              disabled={
-                currentPage === totalPages || totalPages === 0
-              }
+              disabled={currentPage === totalPages || totalPages === 0}
               onClick={() => setCurrentPage((prev) => prev + 1)}
             >
               Next
