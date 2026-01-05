@@ -7,9 +7,6 @@ const Report = () => {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [filteredLogs, setFilteredLogs] = useState([]);
-  const [editingIndex, setEditingIndex] = useState(null);
-  const [newTimeIn, setNewTimeIn] = useState("");
-  const [newTimeOut, setNewTimeOut] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
   const itemsPerPage = 5;
@@ -25,7 +22,7 @@ const Report = () => {
       setLogs(res.data);
       setFilteredLogs(res.data);
     } catch (error) {
-      console.error("❌ Error fetching logs:", error);
+      console.error("Error fetching logs:", error);
     }
   };
 
@@ -39,6 +36,7 @@ const Report = () => {
       const logDate = new Date(log.date);
       const from = fromDate ? new Date(fromDate + "T00:00:00") : null;
       const to = toDate ? new Date(toDate + "T23:59:59") : null;
+
       return (!from || logDate >= from) && (!to || logDate <= to);
     });
 
@@ -49,20 +47,37 @@ const Report = () => {
   const totalPages = Math.ceil(filteredLogs.length / itemsPerPage);
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filteredLogs.slice(indexOfFirstItem, indexOfLastItem);
+  const currentItems = filteredLogs.slice(
+    indexOfFirstItem,
+    indexOfLastItem
+  );
 
   const handlePrint = () => {
     const printWindow = window.open("", "_blank");
     const tableHTML = `
       <html>
         <head>
-          <title>Attendance Record And Approval</title>
+          <title>Attendance Record</title>
           <style>
-            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; }
-            table { width: 100%; border-collapse: collapse; text-align: center; }
-            th, td { border: 1px solid #000; padding: 8px; }
-            th { background: #59a5f0; }
-            td { background: #b3d9ff; }
+            body {
+              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+              padding: 20px;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              text-align: center;
+            }
+            th, td {
+              border: 1px solid #000;
+              padding: 8px;
+            }
+            th {
+              background: #59a5f0;
+            }
+            td {
+              background: #b3d9ff;
+            }
           </style>
         </head>
         <body>
@@ -107,60 +122,6 @@ const Report = () => {
     printWindow.print();
   };
 
-  const handleEditClick = (index) => {
-    setEditingIndex(index);
-    setNewTimeIn(currentItems[index].time_in || "");
-    setNewTimeOut(currentItems[index].time_out || "");
-  };
-
-  const handleCancelClick = () => {
-    setEditingIndex(null);
-    setNewTimeIn("");
-    setNewTimeOut("");
-  };
-
-  const handleSaveClick = async (index) => {
-    const globalIndex = indexOfFirstItem + index;
-    const record = filteredLogs[globalIndex];
-    const attendanceId = record.attendance_id;
-
-    let workingHours = null;
-    if (newTimeIn && newTimeOut) {
-      const [inH, inM] = newTimeIn.split(":").map(Number);
-      const [outH, outM] = newTimeOut.split(":").map(Number);
-      let hours = outH - inH;
-      let minutes = outM - inM;
-      if (minutes < 0) {
-        hours -= 1;
-        minutes += 60;
-      }
-      workingHours = (hours + minutes / 60).toFixed(2);
-    }
-
-    try {
-      if (newTimeIn !== record.time_in) {
-        await axios.put(`${API_URL}/${attendanceId}/time-in`, {
-          time_in: newTimeIn,
-        });
-      }
-
-      if (newTimeOut !== record.time_out) {
-        await axios.put(`${API_URL}/${attendanceId}`, {
-          time_out: newTimeOut,
-          working_hours: workingHours,
-        });
-      }
-
-      await fetchLogs();
-      setEditingIndex(null);
-      setNewTimeIn("");
-      setNewTimeOut("");
-    } catch (error) {
-      console.error("❌ Failed to save changes:", error);
-      alert("Failed to save changes to the database");
-    }
-  };
-
   return (
     <div className="report-scroll-wrapper">
       <div className="report-container">
@@ -201,77 +162,31 @@ const Report = () => {
               <th>TIME-IN</th>
               <th>TIME-OUT</th>
               <th>NO. OF HOURS</th>
-              <th className="no-print">ACTION</th>
             </tr>
           </thead>
           <tbody>
             {currentItems.length > 0 ? (
               currentItems.map((log, idx) => (
                 <tr key={idx}>
-                  <td>{new Date(log.date).toLocaleDateString("en-US")}</td>
+                  <td>
+                    {new Date(log.date).toLocaleDateString("en-US")}
+                  </td>
                   <td>{log.employee_id}</td>
                   <td>{log.fullname}</td>
                   <td>{log.temperature || "-"}</td>
                   <td>{log.status || "-"}</td>
                   <td>
-                    {editingIndex === idx ? (
-                      <input
-                        type="time"
-                        value={newTimeIn}
-                        onChange={(e) => setNewTimeIn(e.target.value)}
-                        step="60"
-                      />
-                    ) : log.time_in ? (
-                      log.time_in.slice(0, 5)
-                    ) : (
-                      "-"
-                    )}
+                    {log.time_in ? log.time_in.slice(0, 5) : "-"}
                   </td>
                   <td>
-                    {editingIndex === idx ? (
-                      <input
-                        type="time"
-                        value={newTimeOut}
-                        onChange={(e) => setNewTimeOut(e.target.value)}
-                        step="60"
-                      />
-                    ) : log.time_out ? (
-                      log.time_out.slice(0, 5)
-                    ) : (
-                      "-"
-                    )}
+                    {log.time_out ? log.time_out.slice(0, 5) : "-"}
                   </td>
                   <td>{log.working_hours || "-"}</td>
-                  <td className="no-print">
-                    {editingIndex === idx ? (
-                      <>
-                        <button
-                          className="save-btn"
-                          onClick={() => handleSaveClick(idx)}
-                        >
-                          Save
-                        </button>
-                        <button
-                          className="cancel-btn"
-                          onClick={handleCancelClick}
-                        >
-                          Cancel
-                        </button>
-                      </>
-                    ) : (
-                      <button
-                        className="edit-btn"
-                        onClick={() => handleEditClick(idx)}
-                      >
-                        Edit
-                      </button>
-                    )}
-                  </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan="9">No records found</td>
+                <td colSpan="8">No records found</td>
               </tr>
             )}
           </tbody>
@@ -298,7 +213,9 @@ const Report = () => {
             <span className="page-number">{currentPage}</span>
             <button
               className="page-buttonN"
-              disabled={currentPage === totalPages || totalPages === 0}
+              disabled={
+                currentPage === totalPages || totalPages === 0
+              }
               onClick={() => setCurrentPage((prev) => prev + 1)}
             >
               Next
