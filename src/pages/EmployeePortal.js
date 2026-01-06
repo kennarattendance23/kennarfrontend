@@ -18,9 +18,10 @@ function EmployeePortal() {
 
   /* ================= AUTH + ROLE GUARD ================= */
   useEffect(() => {
-    if (!user) navigate("/login", { replace: true });
-    if (user?.role !== "employee") navigate("/dashboard", { replace: true });
-    if (!user?.employee_id) navigate("/login", { replace: true });
+    if (!user) return navigate("/login", { replace: true });
+    if (user?.role !== "employee")
+      return navigate("/dashboard", { replace: true });
+    if (!user?.employee_id) return navigate("/login", { replace: true });
   }, [user, navigate]);
 
   /* ================= CLOCK ================= */
@@ -51,7 +52,7 @@ function EmployeePortal() {
       );
   }, [user]);
 
-  /* ================= FETCH ATTENDANCE ================= */
+  /* ================= FETCH + INIT ATTENDANCE ================= */
   const fetchAttendanceLogs = async () => {
     if (!employee?.employee_id) return;
 
@@ -74,7 +75,7 @@ function EmployeePortal() {
         return logDate === today;
       });
 
-      // Auto-create today's attendance if missing
+      // Auto-create today's attendance
       if (!todayRecord) {
         const createRes = await axios.post(`${API_BASE}/attendance`, {
           employee_id: employee.employee_id,
@@ -85,9 +86,14 @@ function EmployeePortal() {
         todayRecord = createRes.data;
       }
 
-      setTodayAttendance(todayRecord);
+      // 🔥 NORMALIZE attendance ID (id OR attendance_id)
+      setTodayAttendance({
+        ...todayRecord,
+        attendance_id:
+          todayRecord.attendance_id || todayRecord.id,
+      });
     } catch (err) {
-      console.error("❌ Attendance fetch error:", err.response || err);
+      console.error("❌ Attendance fetch/init error:", err.response || err);
     } finally {
       setLoadingToday(false);
     }
@@ -110,7 +116,7 @@ function EmployeePortal() {
       setStatusMessage("🟡 Time-in submitted for approval.");
       fetchAttendanceLogs();
     } catch (err) {
-      console.error("Time-in error:", err.response || err);
+      console.error("❌ Time-in error:", err.response || err);
       setStatusMessage("❌ Failed to submit time-in.");
     }
   };
@@ -144,7 +150,7 @@ function EmployeePortal() {
       setStatusMessage("🟡 Time-out submitted for approval.");
       fetchAttendanceLogs();
     } catch (err) {
-      console.error("Time-out error:", err.response || err);
+      console.error("❌ Time-out error:", err.response || err);
       setStatusMessage("❌ Failed to submit time-out.");
     }
   };
@@ -195,7 +201,7 @@ function EmployeePortal() {
         <button
           onClick={handleTimeIn}
           className="in-button"
-          disabled={loadingToday || !todayAttendance}
+          disabled={loadingToday || !todayAttendance?.attendance_id}
         >
           🕒 Time In
         </button>
@@ -203,7 +209,7 @@ function EmployeePortal() {
         <button
           onClick={handleTimeOut}
           className="out-button"
-          disabled={loadingToday || !todayAttendance}
+          disabled={loadingToday || !todayAttendance?.attendance_id}
         >
           🏁 Time Out
         </button>
