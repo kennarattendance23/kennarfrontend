@@ -3,7 +3,7 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import "../EmployeePortal.css";
 
-const API_BASE = "https://kennarbackend.onrender.com/api/v1"; // Ensure v1 is correct
+const API_BASE = "https://kennarbackend.onrender.com/api/attendance"; 
 
 const getManilaDate = () =>
   new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
