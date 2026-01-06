@@ -3,9 +3,7 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import "../EmployeePortal.css";
 
-/* ===================== SET YOUR BACKEND API ===================== */
-// Change this to match your backend route, e.g. /api, /api/v1, etc.
-const API_BASE = "https://kennarbackend.onrender.com/api";
+const API_BASE = "https://kennarbackend.onrender.com/api/v1/attendance"; // Ensure v1 is correct
 
 const getManilaDate = () =>
   new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
@@ -62,72 +60,59 @@ function EmployeePortal() {
   }, [user, navigate]);
 
   /* ================= FETCH ATTENDANCE ================= */
-  useEffect(() => {
-    if (!employee?.employee_id) return;
+  const fetchAttendanceLogs = async (empId) => {
+    if (!empId) return;
+    setLoading(true);
+    try {
+      const res = await axios.get(`${API_BASE}/attendance`);
+      const allLogs = Array.isArray(res.data) ? res.data : res.data.data || [];
+      const logs = allLogs.filter((a) => Number(a.employee_id) === Number(empId));
+      setAttendanceLogs(logs);
 
-    const fetchAttendance = async () => {
-      setLoading(true);
-      setStatusMessage("");
+      const today = getManilaDate();
+      let todayLog = logs.find(
+        (l) => new Date(l.date).toDateString() === new Date(today).toDateString()
+      );
 
-      try {
-        const res = await axios.get(`${API_BASE}/attendance`);
-        const allLogs = Array.isArray(res.data) ? res.data : res.data.data || [];
-        const logs = allLogs.filter(
-          (a) => Number(a.employee_id) === Number(employee.employee_id)
-        );
-        setAttendanceLogs(logs);
-
-        const today = getManilaDate();
-        let todayLog = logs.find(
-          (l) =>
-            new Date(l.date).toDateString() === new Date(today).toDateString()
-        );
-
-        // Create attendance if missing
-        if (!todayLog) {
-          try {
-            const createRes = await axios.post(`${API_BASE}/attendance`, {
-              employee_id: employee.employee_id,
-              fullname: employee.name || employee.fullname || user.name || "Employee",
-              date: today,
-              status: "Present",
-            });
-            todayLog = createRes.data;
-          } catch (err) {
-            console.error("Could not create today's attendance:", err.response || err);
-            todayLog = {
-              employee_id: employee.employee_id,
-              fullname: employee.name || employee.fullname || user.name || "Employee",
-              date: today,
-              status: "Unknown",
-              time_in: null,
-              time_out: null,
-              working_hours: null,
-            };
-            setStatusMessage("Using placeholder attendance. Time In will create record.");
-          }
+      if (!todayLog) {
+        // Create today's attendance if missing
+        try {
+          const createRes = await axios.post(`${API_BASE}/attendance`, {
+            employee_id: empId,
+            fullname: employee.name || employee.fullname || user.name || "Employee",
+            date: today,
+            status: "Present",
+          });
+          todayLog = createRes.data;
+        } catch (err) {
+          console.error("Could not create today's attendance:", err.response || err);
+          todayLog = {
+            employee_id: empId,
+            fullname: employee.name || employee.fullname || user.name || "Employee",
+            date: today,
+            status: "Unknown",
+            time_in: null,
+            time_out: null,
+            working_hours: null,
+          };
+          setStatusMessage("Using placeholder attendance. Time In will create record.");
         }
-
-        setTodayAttendance(todayLog);
-      } catch (err) {
-        console.error("Attendance fetch error:", err.response || err);
-        setTodayAttendance({
-          employee_id: employee.employee_id,
-          fullname: employee.name || employee.fullname || user.name || "Employee",
-          date: getManilaDate(),
-          status: "Unknown",
-          time_in: null,
-          time_out: null,
-          working_hours: null,
-        });
-        setStatusMessage("Failed to load attendance. Using placeholder.");
-      } finally {
-        setLoading(false);
       }
-    };
 
-    fetchAttendance();
-  }, [employee, user]);
+      setTodayAttendance(todayLog);
+    } catch (err) {
+      console.error("Attendance fetch error:", err.response || err);
+      setStatusMessage("Failed to load attendance.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (employee?.employee_id) {
+      fetchAttendanceLogs(employee.employee_id);
+    }
+  }, [employee]);
 
   /* ================= TIME IN ================= */
   const handleTimeIn = async () => {
@@ -136,26 +121,26 @@ function EmployeePortal() {
     setLoading(true);
     try {
       let attendanceId = todayAttendance.id;
+      const timeIn = getManilaTime();
 
       if (!attendanceId) {
+        // Create attendance record with Time In
         const res = await axios.post(`${API_BASE}/attendance`, {
           employee_id: employee.employee_id,
           fullname: employee.name || employee.fullname || user.name || "Employee",
           date: getManilaDate(),
           status: "Present",
-          time_in: getManilaTime(),
+          time_in: timeIn,
         });
         attendanceId = res.data.id;
-        setTodayAttendance(res.data);
       } else {
-        const timeIn = getManilaTime();
         await axios.put(`${API_BASE}/attendance/${attendanceId}/time-in`, {
           time_in: timeIn,
         });
-        setTodayAttendance((prev) => ({ ...prev, time_in: timeIn }));
       }
 
       setStatusMessage("Time In recorded successfully.");
+      await fetchAttendanceLogs(employee.employee_id); // Refresh table
     } catch (err) {
       console.error("Time In error:", err.response || err);
       setStatusMessage("Failed to time in. Check backend route.");
@@ -183,13 +168,8 @@ function EmployeePortal() {
           time_out: timeOut,
           working_hours: Math.max(0, hours),
         });
-        setTodayAttendance((prev) => ({
-          ...prev,
-          time_out: timeOut,
-          working_hours: Math.max(0, hours),
-        }));
       } else {
-        const res = await axios.post(`${API_BASE}/attendance`, {
+        await axios.post(`${API_BASE}/attendance`, {
           employee_id: employee.employee_id,
           fullname: employee.name || employee.fullname || user.name || "Employee",
           date: getManilaDate(),
@@ -198,10 +178,10 @@ function EmployeePortal() {
           time_out: timeOut,
           working_hours: Math.max(0, hours),
         });
-        setTodayAttendance(res.data);
       }
 
       setStatusMessage("Time Out recorded successfully.");
+      await fetchAttendanceLogs(employee.employee_id); // Refresh table
     } catch (err) {
       console.error("Time Out error:", err.response || err);
       setStatusMessage("Failed to time out. Check backend route.");
@@ -270,9 +250,7 @@ function EmployeePortal() {
         </button>
       </div>
 
-      <p style={{ textAlign: "center", fontWeight: "bold" }}>
-        {statusMessage}
-      </p>
+      <p style={{ textAlign: "center", fontWeight: "bold" }}>{statusMessage}</p>
 
       <div className="report_table">
         <h3>Your Attendance Logs</h3>
