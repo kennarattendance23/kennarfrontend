@@ -3,9 +3,10 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import "../EmployeePortal.css";
 
+/* ===================== SET YOUR BACKEND API ===================== */
+// Change this to match your backend route, e.g. /api, /api/v1, etc.
 const API_BASE = "https://kennarbackend.onrender.com/api";
 
-/* ================= MANILA HELPERS ================= */
 const getManilaDate = () =>
   new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
 
@@ -94,7 +95,6 @@ function EmployeePortal() {
             todayLog = createRes.data;
           } catch (err) {
             console.error("Could not create today's attendance:", err.response || err);
-            // Use placeholder to allow Time In
             todayLog = {
               employee_id: employee.employee_id,
               fullname: employee.name || employee.fullname || user.name || "Employee",
@@ -137,7 +137,6 @@ function EmployeePortal() {
     try {
       let attendanceId = todayAttendance.id;
 
-      // If no record yet, create attendance with time_in
       if (!attendanceId) {
         const res = await axios.post(`${API_BASE}/attendance`, {
           employee_id: employee.employee_id,
@@ -159,7 +158,7 @@ function EmployeePortal() {
       setStatusMessage("Time In recorded successfully.");
     } catch (err) {
       console.error("Time In error:", err.response || err);
-      setStatusMessage("Failed to time in.");
+      setStatusMessage("Failed to time in. Check backend route.");
     } finally {
       setLoading(false);
     }
@@ -190,7 +189,6 @@ function EmployeePortal() {
           working_hours: Math.max(0, hours),
         }));
       } else {
-        // Create record if somehow missing
         const res = await axios.post(`${API_BASE}/attendance`, {
           employee_id: employee.employee_id,
           fullname: employee.name || employee.fullname || user.name || "Employee",
@@ -206,7 +204,7 @@ function EmployeePortal() {
       setStatusMessage("Time Out recorded successfully.");
     } catch (err) {
       console.error("Time Out error:", err.response || err);
-      setStatusMessage("Failed to time out.");
+      setStatusMessage("Failed to time out. Check backend route.");
     } finally {
       setLoading(false);
     }
