@@ -14,14 +14,12 @@ function EmployeePortal() {
   const [todayAttendance, setTodayAttendance] = useState(null);
   const [statusMessage, setStatusMessage] = useState("");
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [loadingToday, setLoadingToday] = useState(true);
 
   /* ================= AUTH + ROLE GUARD ================= */
   useEffect(() => {
-    if (!user) return navigate("/login", { replace: true });
-    if (user?.role !== "employee")
-      return navigate("/dashboard", { replace: true });
-    if (!user?.employee_id) return navigate("/login", { replace: true });
+    if (!user) navigate("/login", { replace: true });
+    if (user?.role !== "employee") navigate("/dashboard", { replace: true });
+    if (!user?.employee_id) navigate("/login", { replace: true });
   }, [user, navigate]);
 
   /* ================= CLOCK ================= */
@@ -39,63 +37,44 @@ function EmployeePortal() {
   useEffect(() => {
     if (!user?.employee_id) return;
 
-    axios
-      .get(`${API_BASE}/employees`)
-      .then((res) => {
+    axios.get(`${API_BASE}/employees`)
+      .then(res => {
         const emp = res.data.find(
-          (e) => Number(e.employee_id) === Number(user.employee_id)
+          e => Number(e.employee_id) === Number(user.employee_id)
         );
         setEmployee(emp || user);
       })
-      .catch((err) =>
-        console.error("❌ Employee fetch error:", err.response || err)
-      );
+      .catch(err => console.error("❌ Employee fetch error:", err.response || err));
   }, [user]);
 
-  /* ================= FETCH + INIT ATTENDANCE ================= */
+  /* ================= FETCH ATTENDANCE ================= */
   const fetchAttendanceLogs = async () => {
     if (!employee?.employee_id) return;
-
-    setLoadingToday(true);
-
     try {
       const res = await axios.get(`${API_BASE}/attendance`);
-
       const logs = res.data.filter(
-        (a) => Number(a.employee_id) === Number(employee.employee_id)
+        a => Number(a.employee_id) === Number(employee.employee_id)
       );
-
       setAttendanceLogs(logs);
 
+      // Find today's record
       const today = new Date().toISOString().split("T")[0];
+      let todayRecord = logs.find(log => log.date?.startsWith(today));
 
-      let todayRecord = logs.find((log) => {
-        if (!log.date) return false;
-        const logDate = new Date(log.date).toISOString().split("T")[0];
-        return logDate === today;
-      });
-
-      // Auto-create today's attendance
+      // If no record, create one automatically with pending status
       if (!todayRecord) {
         const createRes = await axios.post(`${API_BASE}/attendance`, {
           employee_id: employee.employee_id,
           fullname: employee.name,
           date: today,
-          status: "pending",
+          status: "pending", // default pending
         });
         todayRecord = createRes.data;
       }
 
-      // 🔥 NORMALIZE attendance ID (id OR attendance_id)
-      setTodayAttendance({
-        ...todayRecord,
-        attendance_id:
-          todayRecord.attendance_id || todayRecord.id,
-      });
+      setTodayAttendance(todayRecord);
     } catch (err) {
-      console.error("❌ Attendance fetch/init error:", err.response || err);
-    } finally {
-      setLoadingToday(false);
+      console.error("❌ Attendance fetch/create error:", err.response || err);
     }
   };
 
@@ -105,10 +84,16 @@ function EmployeePortal() {
 
   /* ================= TIME IN ================= */
   const handleTimeIn = async () => {
-    try {
-      const timeString = currentTime.toLocaleTimeString("en-GB");
+    if (!todayAttendance) {
+      setStatusMessage("❌ No attendance record found for today.");
+      return;
+    }
 
-      await axios.put(
+    try {
+      const timeString = currentTime.toLocaleTimeString("en-GB"); // HH:MM:SS
+
+      // Submit time-in with pending status
+      const res = await axios.put(
         `${API_BASE}/attendance/${todayAttendance.attendance_id}/time-in`,
         { time_in: timeString, status: "pending" }
       );
@@ -116,41 +101,44 @@ function EmployeePortal() {
       setStatusMessage("🟡 Time-in submitted for approval.");
       fetchAttendanceLogs();
     } catch (err) {
-      console.error("❌ Time-in error:", err.response || err);
+      console.error("Time-in error:", err.response || err);
       setStatusMessage("❌ Failed to submit time-in.");
     }
   };
 
   /* ================= TIME OUT ================= */
   const handleTimeOut = async () => {
+    if (!todayAttendance) {
+      setStatusMessage("❌ No attendance record found for today.");
+      return;
+    }
+
     try {
       const timeOutString = currentTime.toLocaleTimeString("en-GB");
 
+      // Calculate working hours if time_in exists
       let workingHours = 0;
-      if (todayAttendance?.time_in) {
+      if (todayAttendance.time_in) {
         const [h, m, s] = todayAttendance.time_in.split(":").map(Number);
-        const [oh, om, os] = timeOutString.split(":").map(Number);
-
         const timeInSec = h * 3600 + m * 60 + s;
+
+        const [oh, om, os] = timeOutString.split(":").map(Number);
         const timeOutSec = oh * 3600 + om * 60 + os;
 
         workingHours = Math.max(0, (timeOutSec - timeInSec) / 3600);
-        workingHours = Math.round(workingHours * 100) / 100;
+        workingHours = Math.round(workingHours * 100) / 100; // 2 decimals
       }
 
-      await axios.put(
+      // Submit time-out with pending status
+      const res = await axios.put(
         `${API_BASE}/attendance/${todayAttendance.attendance_id}/time-out`,
-        {
-          time_out: timeOutString,
-          working_hours: workingHours,
-          status: "pending",
-        }
+        { time_out: timeOutString, working_hours: workingHours, status: "pending" }
       );
 
       setStatusMessage("🟡 Time-out submitted for approval.");
       fetchAttendanceLogs();
     } catch (err) {
-      console.error("❌ Time-out error:", err.response || err);
+      console.error("Time-out error:", err.response || err);
       setStatusMessage("❌ Failed to submit time-out.");
     }
   };
@@ -198,23 +186,8 @@ function EmployeePortal() {
       </div>
 
       <div style={{ marginTop: 30, textAlign: "center" }}>
-        <button
-          onClick={handleTimeIn}
-          className="in-button"
-          disabled={loadingToday || !todayAttendance?.attendance_id}
-        >
-          🕒 Time In
-        </button>
-
-        <button
-          onClick={handleTimeOut}
-          className="out-button"
-          disabled={loadingToday || !todayAttendance?.attendance_id}
-        >
-          🏁 Time Out
-        </button>
-
-        {loadingToday && <p>⏳ Initializing today’s attendance...</p>}
+        <button onClick={handleTimeIn} className="in-button">🕒 Time In</button>
+        <button onClick={handleTimeOut} className="out-button">🏁 Time Out</button>
         <p>{statusMessage}</p>
       </div>
 
@@ -234,11 +207,7 @@ function EmployeePortal() {
             <tbody>
               {attendanceLogs.map((log, i) => (
                 <tr key={i}>
-                  <td>
-                    {log.date
-                      ? new Date(log.date).toLocaleDateString()
-                      : "-"}
-                  </td>
+                  <td>{log.date ? new Date(log.date).toLocaleDateString() : "-"}</td>
                   <td>{log.time_in || "-"}</td>
                   <td>
                     {log.status === "approved" && "🟢 Approved"}
