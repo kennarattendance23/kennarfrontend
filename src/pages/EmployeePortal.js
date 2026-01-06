@@ -5,7 +5,7 @@ import "../EmployeePortal.css";
 
 const API_BASE = "https://kennarbackend.onrender.com/api";
 
-/* ================= MANILA DATE HELPERS ================= */
+/* ================= MANILA HELPERS ================= */
 const getManilaDate = () =>
   new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
 
@@ -40,7 +40,6 @@ function EmployeePortal() {
       );
       setCurrentTime(manilaNow);
     }, 1000);
-
     return () => clearInterval(interval);
   }, []);
 
@@ -59,12 +58,14 @@ function EmployeePortal() {
       .catch(() => navigate("/login", { replace: true }));
   }, [user, navigate]);
 
-  /* ================= FETCH ATTENDANCE ================= */
+  /* ================= FETCH ATTENDANCE (ROBUST) ================= */
   useEffect(() => {
     if (!employee?.employee_id) return;
 
     const fetchAttendance = async () => {
       setLoading(true);
+      setStatusMessage("");
+
       try {
         const res = await axios.get(`${API_BASE}/attendance`);
 
@@ -77,19 +78,39 @@ function EmployeePortal() {
         const today = getManilaDate();
         let todayLog = logs.find((l) => l.date === today);
 
+        // Attempt create ONLY if not found
         if (!todayLog) {
-          const create = await axios.post(`${API_BASE}/attendance`, {
-            employee_id: employee.employee_id,
-            fullname: employee.name,
-            date: today,
-            status: "Present",
-          });
-          todayLog = create.data;
+          try {
+            const create = await axios.post(`${API_BASE}/attendance`, {
+              employee_id: employee.employee_id,
+              fullname:
+                employee.name ||
+                employee.fullname ||
+                user.name ||
+                "Employee",
+              date: today,
+              status: "Present",
+            });
+
+            todayLog = create.data;
+          } catch {
+            // Fallback: re-fetch in case record already exists
+            const retry = await axios.get(`${API_BASE}/attendance`);
+            todayLog = retry.data.find(
+              (l) =>
+                Number(l.employee_id) === Number(employee.employee_id) &&
+                l.date === today
+            );
+          }
+        }
+
+        if (!todayLog) {
+          throw new Error("Today attendance could not be resolved.");
         }
 
         setTodayAttendance(todayLog);
       } catch (err) {
-        console.error(err);
+        console.error("Attendance error:", err);
         setStatusMessage("Failed to load attendance.");
       } finally {
         setLoading(false);
@@ -117,7 +138,8 @@ function EmployeePortal() {
       }));
 
       setStatusMessage("Time In recorded successfully.");
-    } catch {
+    } catch (err) {
+      console.error(err);
       setStatusMessage("Failed to time in.");
     }
   };
@@ -155,7 +177,8 @@ function EmployeePortal() {
       }));
 
       setStatusMessage("Time Out recorded successfully.");
-    } catch {
+    } catch (err) {
+      console.error(err);
       setStatusMessage("Failed to time out.");
     }
   };
@@ -183,7 +206,7 @@ function EmployeePortal() {
         </div>
         <div className="stat-box">
           <strong>Name</strong>
-          <p>{employee?.name || "-"}</p>
+          <p>{employee?.name || employee?.fullname || "-"}</p>
         </div>
         <div className="stat-box">
           <strong>Status</strong>
@@ -201,6 +224,12 @@ function EmployeePortal() {
           <p>{currentTime.toLocaleTimeString()}</p>
         </div>
       </div>
+
+      {!todayAttendance && !loading && (
+        <p style={{ textAlign: "center", color: "red", fontWeight: "bold" }}>
+          Attendance record for today could not be loaded.
+        </p>
+      )}
 
       <div className="button-row">
         <button
