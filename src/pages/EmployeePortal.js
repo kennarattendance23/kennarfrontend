@@ -5,13 +5,12 @@ import "../EmployeePortal.css";
 
 const API_BASE = "https://kennarbackend.onrender.com/api";
 
-/* ================= MANILA DATE HELPER ================= */
-const getManilaDate = () => {
-  const manila = new Date().toLocaleString("en-CA", {
-    timeZone: "Asia/Manila",
-  });
-  return manila.split(",")[0];
-};
+/* ================= MANILA DATE HELPERS ================= */
+const getManilaDate = () =>
+  new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
+
+const getManilaTime = () =>
+  new Date().toLocaleTimeString("en-GB", { timeZone: "Asia/Manila" });
 
 function EmployeePortal() {
   const navigate = useNavigate();
@@ -36,11 +35,12 @@ function EmployeePortal() {
   /* ================= CLOCK ================= */
   useEffect(() => {
     const interval = setInterval(() => {
-      const manilaNow = new Date().toLocaleString("en-US", {
-        timeZone: "Asia/Manila",
-      });
-      setCurrentTime(new Date(manilaNow));
+      const manilaNow = new Date(
+        new Date().toLocaleString("en-US", { timeZone: "Asia/Manila" })
+      );
+      setCurrentTime(manilaNow);
     }, 1000);
+
     return () => clearInterval(interval);
   }, []);
 
@@ -67,6 +67,7 @@ function EmployeePortal() {
       setLoading(true);
       try {
         const res = await axios.get(`${API_BASE}/attendance`);
+
         const logs = res.data.filter(
           (a) => Number(a.employee_id) === Number(employee.employee_id)
         );
@@ -89,6 +90,7 @@ function EmployeePortal() {
         setTodayAttendance(todayLog);
       } catch (err) {
         console.error(err);
+        setStatusMessage("Failed to load attendance.");
       } finally {
         setLoading(false);
       }
@@ -99,16 +101,22 @@ function EmployeePortal() {
 
   /* ================= TIME IN ================= */
   const handleTimeIn = async () => {
-    if (loading || todayAttendance?.time_in) return;
+    if (loading || !todayAttendance?.id || todayAttendance.time_in) return;
 
     try {
+      const timeIn = getManilaTime();
+
       await axios.put(
         `${API_BASE}/attendance/${todayAttendance.id}/time-in`,
-        {
-          time_in: currentTime.toLocaleTimeString("en-GB"),
-        }
+        { time_in: timeIn }
       );
-      window.location.reload();
+
+      setTodayAttendance((prev) => ({
+        ...prev,
+        time_in: timeIn,
+      }));
+
+      setStatusMessage("Time In recorded successfully.");
     } catch {
       setStatusMessage("Failed to time in.");
     }
@@ -116,11 +124,16 @@ function EmployeePortal() {
 
   /* ================= TIME OUT ================= */
   const handleTimeOut = async () => {
-    if (loading || !todayAttendance?.time_in || todayAttendance?.time_out)
+    if (
+      loading ||
+      !todayAttendance?.id ||
+      !todayAttendance.time_in ||
+      todayAttendance.time_out
+    )
       return;
 
     try {
-      const timeOut = currentTime.toLocaleTimeString("en-GB");
+      const timeOut = getManilaTime();
 
       const [h, m, s] = todayAttendance.time_in.split(":").map(Number);
       const [oh, om, os] = timeOut.split(":").map(Number);
@@ -135,7 +148,13 @@ function EmployeePortal() {
         working_hours: Math.max(0, hours),
       });
 
-      window.location.reload();
+      setTodayAttendance((prev) => ({
+        ...prev,
+        time_out: timeOut,
+        working_hours: Math.max(0, hours),
+      }));
+
+      setStatusMessage("Time Out recorded successfully.");
     } catch {
       setStatusMessage("Failed to time out.");
     }
@@ -184,11 +203,24 @@ function EmployeePortal() {
       </div>
 
       <div className="button-row">
-        <button className="in-button" onClick={handleTimeIn}>
-           Time In
+        <button
+          className="in-button"
+          onClick={handleTimeIn}
+          disabled={loading || todayAttendance?.time_in}
+        >
+          Time In
         </button>
-        <button className="out-button" onClick={handleTimeOut}>
-           Time Out
+
+        <button
+          className="out-button"
+          onClick={handleTimeOut}
+          disabled={
+            loading ||
+            !todayAttendance?.time_in ||
+            todayAttendance?.time_out
+          }
+        >
+          Time Out
         </button>
       </div>
 

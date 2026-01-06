@@ -111,3 +111,16 @@ td {
   padding: 10px;
   border: 1px solid #ccc;
 }
+
+/* Make portal scrollable if content overflows */
+.dashboard-main {
+  max-height: 100vh;        /* full screen height */
+  overflow-y: auto;         /* enable vertical scrolling */
+  padding: 20px;
+  background-color: #f9f9f9; /* optional light background */
+}
+
+/* Make table scrollable horizontally on small screens */
+.table-wrapper {
+  overflow-x: auto;
+}
