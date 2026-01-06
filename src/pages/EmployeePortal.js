@@ -52,9 +52,6 @@ function EmployeePortal() {
         const emp = empArray.find(
           (e) => Number(e.employee_id) === Number(user.employee_id)
         );
-        if (!emp) {
-          console.warn("Employee not found in backend, using local user data");
-        }
         setEmployee(emp || user);
       })
       .catch((err) => {
@@ -74,24 +71,19 @@ function EmployeePortal() {
       try {
         const res = await axios.get(`${API_BASE}/attendance`);
         const allLogs = Array.isArray(res.data) ? res.data : res.data.data || [];
-        console.log("Fetched all attendance:", allLogs);
-
         const logs = allLogs.filter(
           (a) => Number(a.employee_id) === Number(employee.employee_id)
         );
         setAttendanceLogs(logs);
 
         const today = getManilaDate();
-        console.log("Today's date:", today);
-
-        // Try to find today's attendance (allow for minor date format differences)
         let todayLog = logs.find(
           (l) =>
             new Date(l.date).toDateString() === new Date(today).toDateString()
         );
 
+        // Create attendance if missing
         if (!todayLog) {
-          console.log("No attendance for today, attempting to create...");
           try {
             const createRes = await axios.post(`${API_BASE}/attendance`, {
               employee_id: employee.employee_id,
@@ -100,10 +92,9 @@ function EmployeePortal() {
               status: "Present",
             });
             todayLog = createRes.data;
-            console.log("Created today's attendance:", todayLog);
-          } catch (createErr) {
-            console.error("Error creating attendance:", createErr.response || createErr);
-            // fallback: use placeholder if still fails
+          } catch (err) {
+            console.error("Could not create today's attendance:", err.response || err);
+            // Use placeholder to allow Time In
             todayLog = {
               employee_id: employee.employee_id,
               fullname: employee.name || employee.fullname || user.name || "Employee",
@@ -113,14 +104,13 @@ function EmployeePortal() {
               time_out: null,
               working_hours: null,
             };
-            setStatusMessage("Could not load today's attendance. Using placeholder.");
+            setStatusMessage("Using placeholder attendance. Time In will create record.");
           }
         }
 
         setTodayAttendance(todayLog);
       } catch (err) {
         console.error("Attendance fetch error:", err.response || err);
-        // fallback: placeholder
         setTodayAttendance({
           employee_id: employee.employee_id,
           fullname: employee.name || employee.fullname || user.name || "Employee",
@@ -141,67 +131,84 @@ function EmployeePortal() {
 
   /* ================= TIME IN ================= */
   const handleTimeIn = async () => {
-    if (loading || !todayAttendance?.employee_id || todayAttendance.time_in) return;
+    if (loading || todayAttendance?.time_in) return;
 
+    setLoading(true);
     try {
-      const timeIn = getManilaTime();
+      let attendanceId = todayAttendance.id;
 
-      if (todayAttendance.id) {
-        await axios.put(`${API_BASE}/attendance/${todayAttendance.id}/time-in`, {
+      // If no record yet, create attendance with time_in
+      if (!attendanceId) {
+        const res = await axios.post(`${API_BASE}/attendance`, {
+          employee_id: employee.employee_id,
+          fullname: employee.name || employee.fullname || user.name || "Employee",
+          date: getManilaDate(),
+          status: "Present",
+          time_in: getManilaTime(),
+        });
+        attendanceId = res.data.id;
+        setTodayAttendance(res.data);
+      } else {
+        const timeIn = getManilaTime();
+        await axios.put(`${API_BASE}/attendance/${attendanceId}/time-in`, {
           time_in: timeIn,
         });
+        setTodayAttendance((prev) => ({ ...prev, time_in: timeIn }));
       }
 
-      setTodayAttendance((prev) => ({
-        ...prev,
-        time_in: timeIn,
-      }));
       setStatusMessage("Time In recorded successfully.");
     } catch (err) {
       console.error("Time In error:", err.response || err);
       setStatusMessage("Failed to time in.");
+    } finally {
+      setLoading(false);
     }
   };
 
   /* ================= TIME OUT ================= */
   const handleTimeOut = async () => {
-    if (
-      loading ||
-      !todayAttendance?.employee_id ||
-      !todayAttendance.time_in ||
-      todayAttendance.time_out
-    )
-      return;
+    if (loading || !todayAttendance?.time_in || todayAttendance?.time_out) return;
 
+    setLoading(true);
     try {
+      let attendanceId = todayAttendance.id;
       const timeOut = getManilaTime();
 
-      const [h, m, s] = todayAttendance.time_in
-        ? todayAttendance.time_in.split(":").map(Number)
-        : [0, 0, 0];
+      const [h, m, s] = todayAttendance.time_in.split(":").map(Number);
       const [oh, om, os] = timeOut.split(":").map(Number);
-
       const hours =
-        Math.round(
-          ((oh * 3600 + om * 60 + os - (h * 3600 + m * 60 + s)) / 3600) * 100
-        ) / 100;
+        Math.round(((oh * 3600 + om * 60 + os - (h * 3600 + m * 60 + s)) / 3600) * 100) / 100;
 
-      if (todayAttendance.id) {
-        await axios.put(`${API_BASE}/attendance/${todayAttendance.id}`, {
+      if (attendanceId) {
+        await axios.put(`${API_BASE}/attendance/${attendanceId}`, {
           time_out: timeOut,
           working_hours: Math.max(0, hours),
         });
+        setTodayAttendance((prev) => ({
+          ...prev,
+          time_out: timeOut,
+          working_hours: Math.max(0, hours),
+        }));
+      } else {
+        // Create record if somehow missing
+        const res = await axios.post(`${API_BASE}/attendance`, {
+          employee_id: employee.employee_id,
+          fullname: employee.name || employee.fullname || user.name || "Employee",
+          date: getManilaDate(),
+          status: "Present",
+          time_in: todayAttendance.time_in || getManilaTime(),
+          time_out: timeOut,
+          working_hours: Math.max(0, hours),
+        });
+        setTodayAttendance(res.data);
       }
 
-      setTodayAttendance((prev) => ({
-        ...prev,
-        time_out: timeOut,
-        working_hours: Math.max(0, hours),
-      }));
       setStatusMessage("Time Out recorded successfully.");
     } catch (err) {
       console.error("Time Out error:", err.response || err);
       setStatusMessage("Failed to time out.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -259,9 +266,7 @@ function EmployeePortal() {
         <button
           className="out-button"
           onClick={handleTimeOut}
-          disabled={
-            loading || !todayAttendance?.time_in || todayAttendance?.time_out
-          }
+          disabled={loading || !todayAttendance?.time_in || todayAttendance?.time_out}
         >
           Time Out
         </button>
