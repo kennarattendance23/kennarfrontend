@@ -5,7 +5,7 @@ import "../EmployeePortal.css";
 
 /* ===================== SET YOUR BACKEND API ===================== */
 // Change this to match your backend route, e.g. /api, /api/v1, etc.
-const API_BASE = "https://kennarbackend.onrender.com/api/v1/attendance";
+const API_BASE = "https://kennarbackend.onrender.com/api";
 
 const getManilaDate = () =>
   new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
