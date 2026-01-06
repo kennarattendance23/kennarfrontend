@@ -5,171 +5,169 @@ import "../EmployeePortal.css";
 
 const API_BASE = "https://kennarbackend.onrender.com/api";
 
-/* ================= MANILA DATE HELPER ================= */
+/* ================= MANILA DATE (YYYY-MM-DD) ================= */
 const getManilaDate = () => {
   const manila = new Date().toLocaleString("en-CA", {
     timeZone: "Asia/Manila",
   });
-  return manila.split(",")[0]; // YYYY-MM-DD
+  return manila.split(",")[0];
 };
 
 function EmployeePortal() {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem("admins"));
 
-  const [employee, setEmployee] = useState(user || null);
+  const [employee, setEmployee] = useState(null);
   const [attendanceLogs, setAttendanceLogs] = useState([]);
   const [todayAttendance, setTodayAttendance] = useState(null);
   const [statusMessage, setStatusMessage] = useState("");
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [loading, setLoading] = useState(true);
 
   /* ================= AUTH GUARD ================= */
   useEffect(() => {
     if (!user) return navigate("/login", { replace: true });
-    if (user?.role !== "employee")
+    if (user.role !== "employee")
       return navigate("/dashboard", { replace: true });
-    if (!user?.employee_id) return navigate("/login", { replace: true });
+    if (!user.employee_id) return navigate("/login", { replace: true });
   }, [user, navigate]);
 
   /* ================= CLOCK (MANILA TIME) ================= */
   useEffect(() => {
-    const interval = setInterval(() => {
-      const manilaTime = new Date().toLocaleString("en-US", {
+    const timer = setInterval(() => {
+      const manilaNow = new Date().toLocaleString("en-US", {
         timeZone: "Asia/Manila",
       });
-      setCurrentTime(new Date(manilaTime));
+      setCurrentTime(new Date(manilaNow));
     }, 1000);
 
-    return () => clearInterval(interval);
+    return () => clearInterval(timer);
   }, []);
 
   /* ================= FETCH EMPLOYEE ================= */
   useEffect(() => {
-    if (!user?.employee_id) return;
-
     axios
       .get(`${API_BASE}/employees`)
       .then((res) => {
         const emp = res.data.find(
           (e) => Number(e.employee_id) === Number(user.employee_id)
         );
-        setEmployee(emp || user);
+        setEmployee(emp);
       })
-      .catch((err) =>
-        console.error("❌ Employee fetch error:", err.response || err)
-      );
-  }, [user]);
+      .catch(() => navigate("/login"));
+  }, [user, navigate]);
 
   /* ================= FETCH / CREATE ATTENDANCE ================= */
-  const fetchAttendanceLogs = async () => {
+  useEffect(() => {
     if (!employee?.employee_id) return;
 
-    try {
-      const res = await axios.get(`${API_BASE}/attendance`);
+    const initAttendance = async () => {
+      setLoading(true);
+      try {
+        const res = await axios.get(`${API_BASE}/attendance`);
 
-      const logs = res.data.filter(
-        (a) => Number(a.employee_id) === Number(employee.employee_id)
-      );
+        const logs = res.data.filter(
+          (a) => Number(a.employee_id) === Number(employee.employee_id)
+        );
 
-      setAttendanceLogs(logs);
+        setAttendanceLogs(logs);
 
-      const today = getManilaDate();
+        const today = getManilaDate();
 
-      let todayRecord = logs.find((log) => log.date === today);
-
-      // ✅ Auto-create today record
-      if (!todayRecord) {
-        const createRes = await axios.post(`${API_BASE}/attendance`, {
-          employee_id: employee.employee_id,
-          fullname: employee.name,
-          date: today,
-          status: "pending",
+        let todayRecord = logs.find((log) => {
+          if (!log.date) return false;
+          return log.date.split("T")[0] === today;
         });
 
-        todayRecord = createRes.data;
+        // ✅ CREATE TODAY RECORD IF MISSING
+        if (!todayRecord) {
+          const createRes = await axios.post(`${API_BASE}/attendance`, {
+            employee_id: employee.employee_id,
+            fullname: employee.name,
+            date: today,
+            status: "pending",
+          });
+          todayRecord = createRes.data;
+        }
+
+        setTodayAttendance(todayRecord);
+      } catch (err) {
+        console.error("Attendance init error:", err);
+      } finally {
+        setLoading(false);
       }
+    };
 
-      setTodayAttendance(todayRecord);
-    } catch (err) {
-      console.error("❌ Attendance fetch/create error:", err.response || err);
-    }
-  };
-
-  useEffect(() => {
-    fetchAttendanceLogs();
+    initAttendance();
   }, [employee]);
 
   /* ================= TIME IN ================= */
   const handleTimeIn = async () => {
-    if (!todayAttendance?.attendance_id) {
-      setStatusMessage("❌ Attendance record not initialized yet.");
+    if (loading || !todayAttendance) {
+      setStatusMessage("⏳ Initializing attendance...");
       return;
     }
 
     if (todayAttendance.time_in) {
-      setStatusMessage("⚠️ You already timed in.");
+      setStatusMessage("⚠️ Already timed in.");
       return;
     }
 
     try {
-      const timeString = currentTime.toLocaleTimeString("en-GB");
+      const time = currentTime.toLocaleTimeString("en-GB");
 
       await axios.put(
         `${API_BASE}/attendance/${todayAttendance.attendance_id}/time-in`,
-        { time_in: timeString }
+        { time_in: time }
       );
 
-      setStatusMessage("🟢 Time-in submitted successfully.");
-      fetchAttendanceLogs();
-    } catch (err) {
-      console.error("❌ Time-in error:", err.response || err);
-      setStatusMessage("❌ Failed to time-in.");
+      setStatusMessage("🟢 Time-in submitted.");
+      window.location.reload();
+    } catch {
+      setStatusMessage("❌ Time-in failed.");
     }
   };
 
   /* ================= TIME OUT ================= */
   const handleTimeOut = async () => {
-    if (!todayAttendance?.attendance_id) {
-      setStatusMessage("❌ Attendance record not initialized yet.");
+    if (loading || !todayAttendance) {
+      setStatusMessage("⏳ Initializing attendance...");
       return;
     }
 
     if (!todayAttendance.time_in) {
-      setStatusMessage("⚠️ You must time in first.");
+      setStatusMessage("⚠️ Time in first.");
       return;
     }
 
     if (todayAttendance.time_out) {
-      setStatusMessage("⚠️ You already timed out.");
+      setStatusMessage("⚠️ Already timed out.");
       return;
     }
 
     try {
-      const timeOutString = currentTime.toLocaleTimeString("en-GB");
-      let workingHours = 0;
+      const timeOut = currentTime.toLocaleTimeString("en-GB");
 
       const [h, m, s] = todayAttendance.time_in.split(":").map(Number);
-      const [oh, om, os] = timeOutString.split(":").map(Number);
+      const [oh, om, os] = timeOut.split(":").map(Number);
 
-      const timeInSec = h * 3600 + m * 60 + s;
-      const timeOutSec = oh * 3600 + om * 60 + os;
-
-      workingHours = Math.max(0, (timeOutSec - timeInSec) / 3600);
-      workingHours = Math.round(workingHours * 100) / 100;
+      const hours =
+        Math.round(
+          ((oh * 3600 + om * 60 + os - (h * 3600 + m * 60 + s)) / 3600) * 100
+        ) / 100;
 
       await axios.put(
         `${API_BASE}/attendance/${todayAttendance.attendance_id}`,
         {
-          time_out: timeOutString,
-          working_hours: workingHours,
+          time_out: timeOut,
+          working_hours: Math.max(0, hours),
         }
       );
 
-      setStatusMessage("🔴 Time-out submitted successfully.");
-      fetchAttendanceLogs();
-    } catch (err) {
-      console.error("❌ Time-out error:", err.response || err);
-      setStatusMessage("❌ Failed to time-out.");
+      setStatusMessage("🔴 Time-out submitted.");
+      window.location.reload();
+    } catch {
+      setStatusMessage("❌ Time-out failed.");
     }
   };
 
@@ -191,31 +189,25 @@ function EmployeePortal() {
 
       <div className="stats-grid">
         <div className="stat-box">
-          <strong>Employee ID</strong>
-          <p>{employee?.employee_id || "-"}</p>
+          <strong>ID</strong>
+          <p>{employee?.employee_id}</p>
         </div>
         <div className="stat-box">
           <strong>Name</strong>
-          <p>{employee?.name || "-"}</p>
+          <p>{employee?.name}</p>
         </div>
         <div className="stat-box">
           <strong>Status</strong>
-          <p>{employee?.status || "-"}</p>
+          <p>{employee?.status}</p>
         </div>
       </div>
 
       <div className="calendar_clock">
-        <div>
-          <h3>Current Day</h3>
-          <p>{currentTime.toDateString()}</p>
-        </div>
-        <div>
-          <h3>Current Time</h3>
-          <p>{currentTime.toLocaleTimeString()}</p>
-        </div>
+        <p>{currentTime.toDateString()}</p>
+        <p>{currentTime.toLocaleTimeString()}</p>
       </div>
 
-      <div style={{ marginTop: 30, textAlign: "center" }}>
+      <div className="actions">
         <button onClick={handleTimeIn} className="in-button">
           🕒 Time In
         </button>
@@ -225,32 +217,30 @@ function EmployeePortal() {
         <p>{statusMessage}</p>
       </div>
 
-      <div className="report_table" style={{ marginTop: 40 }}>
+      <div className="report_table">
         <h3>Your Attendance Logs</h3>
-        <div className="table-wrapper">
-          <table>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Time In</th>
-                <th>Status</th>
-                <th>Time Out</th>
-                <th>Working Hours</th>
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Time In</th>
+              <th>Status</th>
+              <th>Time Out</th>
+              <th>Hours</th>
+            </tr>
+          </thead>
+          <tbody>
+            {attendanceLogs.map((log, i) => (
+              <tr key={i}>
+                <td>{log.date?.split("T")[0]}</td>
+                <td>{log.time_in || "-"}</td>
+                <td>{log.status || "-"}</td>
+                <td>{log.time_out || "-"}</td>
+                <td>{log.working_hours || "-"}</td>
               </tr>
-            </thead>
-            <tbody>
-              {attendanceLogs.map((log, i) => (
-                <tr key={i}>
-                  <td>{log.date}</td>
-                  <td>{log.time_in || "-"}</td>
-                  <td>{log.status || "-"}</td>
-                  <td>{log.time_out || "-"}</td>
-                  <td>{log.working_hours || "-"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
