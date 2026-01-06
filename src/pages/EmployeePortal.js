@@ -10,7 +10,7 @@ const getManilaDate = () => {
   const manila = new Date().toLocaleString("en-CA", {
     timeZone: "Asia/Manila",
   });
-  return manila.split(",")[0]; // YYYY-MM-DD
+  return manila.split(",")[0];
 };
 
 function EmployeePortal() {
@@ -29,7 +29,6 @@ function EmployeePortal() {
     if (!user) return navigate("/login", { replace: true });
     if (user.role !== "employee")
       return navigate("/dashboard", { replace: true });
-    if (!user.employee_id) return navigate("/login", { replace: true });
   }, [user, navigate]);
 
   /* ================= CLOCK ================= */
@@ -46,17 +45,14 @@ function EmployeePortal() {
 
   /* ================= FETCH EMPLOYEE ================= */
   useEffect(() => {
-    if (!user?.employee_id) return;
-
     const fetchEmployee = async () => {
       try {
         const res = await axios.get(`${API_BASE}/employees`);
         const emp = res.data.find(
           (e) => Number(e.employee_id) === Number(user.employee_id)
         );
-        setEmployee(emp || user);
-      } catch (err) {
-        console.error("❌ Employee fetch error:", err);
+        setEmployee(emp);
+      } catch {
         navigate("/login", { replace: true });
       }
     };
@@ -64,199 +60,122 @@ function EmployeePortal() {
     fetchEmployee();
   }, [user, navigate]);
 
-  /* ================= FETCH / CREATE ATTENDANCE ================= */
+  /* ================= FETCH ATTENDANCE ================= */
   useEffect(() => {
-    if (!employee?.employee_id) return;
+    if (!employee) return;
 
-    const fetchAttendanceLogs = async () => {
+    const fetchAttendance = async () => {
       setLoading(true);
-
       try {
         const res = await axios.get(`${API_BASE}/attendance`);
-        const logs = res.data
-          .filter((a) => Number(a.employee_id) === Number(employee.employee_id))
-          .map((a) => ({
-            id: a.id,
-            employee_id: a.employee_id,
-            fullname: a.fullname,
-            date: a.date, // already DATE
-            status: a.status || "Present",
-            time_in: a.time_in || null,
-            time_out: a.time_out || null,
-            working_hours: a.working_hours || 0,
-          }));
+        const logs = res.data.filter(
+          (a) => Number(a.employee_id) === Number(employee.employee_id)
+        );
 
         setAttendanceLogs(logs);
 
         const today = getManilaDate();
-
-        let todayRecord = logs.find((log) => log.date === today);
-
-        if (!todayRecord) {
-          // Create new attendance
-          const createRes = await axios.post(`${API_BASE}/attendance`, {
-            employee_id: employee.employee_id,
-            fullname: employee.name,
-            date: today,
-            status: "Present",
-          });
-
-          todayRecord = {
-            id: createRes.data.id,
-            employee_id: employee.employee_id,
-            fullname: employee.name,
-            date: today,
-            status: "Present",
-            time_in: null,
-            time_out: null,
-            working_hours: 0,
-          };
-        }
-
-        setTodayAttendance(todayRecord);
-      } catch (err) {
-        console.error("❌ Attendance fetch/create error:", err.response || err);
+        const todayLog = logs.find((l) => l.date === today);
+        setTodayAttendance(todayLog);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchAttendanceLogs();
+    fetchAttendance();
   }, [employee]);
 
   /* ================= TIME IN ================= */
   const handleTimeIn = async () => {
-    if (loading) {
-      setStatusMessage("⏳ Initializing attendance, please wait...");
-      return;
-    }
-
-    if (!todayAttendance?.id) {
-      setStatusMessage("❌ Attendance record not ready yet.");
-      return;
-    }
-
-    if (todayAttendance.time_in) {
-      setStatusMessage("⚠️ Already timed in.");
-      return;
-    }
+    if (loading || todayAttendance?.time_in) return;
 
     try {
-      const time = currentTime.toLocaleTimeString("en-GB");
-
-      await axios.put(`${API_BASE}/attendance/${todayAttendance.id}/time-in`, {
-        time_in: time,
-      });
-
-      setStatusMessage("🟢 Time-in recorded successfully.");
+      await axios.put(
+        `${API_BASE}/attendance/${todayAttendance.id}/time-in`,
+        {
+          time_in: currentTime.toLocaleTimeString("en-GB"),
+        }
+      );
       window.location.reload();
-    } catch (err) {
-      console.error("❌ Time-in error:", err.response || err);
-      setStatusMessage("❌ Failed to time-in.");
+    } catch {
+      setStatusMessage("Failed to time in");
     }
   };
 
   /* ================= TIME OUT ================= */
   const handleTimeOut = async () => {
-    if (loading) {
-      setStatusMessage("⏳ Initializing attendance, please wait...");
+    if (loading || !todayAttendance?.time_in || todayAttendance?.time_out)
       return;
-    }
-
-    if (!todayAttendance?.id) {
-      setStatusMessage("❌ Attendance record not ready yet.");
-      return;
-    }
-
-    if (!todayAttendance.time_in) {
-      setStatusMessage("⚠️ You must time in first.");
-      return;
-    }
-
-    if (todayAttendance.time_out) {
-      setStatusMessage("⚠️ Already timed out.");
-      return;
-    }
 
     try {
-      const timeOut = currentTime.toLocaleTimeString("en-GB");
-
-      const [h, m, s] = todayAttendance.time_in.split(":").map(Number);
-      const [oh, om, os] = timeOut.split(":").map(Number);
-
-      const hours =
-        Math.round(
-          ((oh * 3600 + om * 60 + os - (h * 3600 + m * 60 + s)) / 3600) * 100
-        ) / 100;
-
       await axios.put(`${API_BASE}/attendance/${todayAttendance.id}`, {
-        time_out: timeOut,
-        working_hours: Math.max(0, hours),
+        time_out: currentTime.toLocaleTimeString("en-GB"),
       });
-
-      setStatusMessage("🔴 Time-out recorded successfully.");
       window.location.reload();
-    } catch (err) {
-      console.error("❌ Time-out error:", err.response || err);
-      setStatusMessage("❌ Failed to time-out.");
+    } catch {
+      setStatusMessage("Failed to time out");
     }
   };
 
-  /* ================= UI ================= */
   return (
-    <div className="dashboard-main">
-      <div className="header">
-        <h1>EMPLOYEE PORTAL</h1>
-        <button
-          className="logout-btn"
-          onClick={() => {
-            localStorage.removeItem("admins");
-            window.location.href = "/login";
-          }}
-        >
-          Logout
-        </button>
-      </div>
+    <div className="employee-scroll">
+      <div className="employee-portal">
+        {/* HEADER */}
+        <div className="header">
+          <h1>EMPLOYEE PORTAL</h1>
+          <button
+            className="logout-btn"
+            onClick={() => {
+              localStorage.removeItem("admins");
+              navigate("/login");
+            }}
+          >
+            Logout
+          </button>
+        </div>
 
-      <div className="stats-grid">
-        <div className="stat-box">
-          <strong>ID</strong>
-          <p>{employee?.employee_id || "-"}</p>
+        {/* INFO BOXES */}
+        <div className="stats-grid">
+          <div className="stat-box">
+            <strong>Employee ID</strong>
+            <p>{employee?.employee_id}</p>
+          </div>
+          <div className="stat-box">
+            <strong>Name</strong>
+            <p>{employee?.name}</p>
+          </div>
+          <div className="stat-box">
+            <strong>Status</strong>
+            <p>{employee?.status}</p>
+          </div>
         </div>
-        <div className="stat-box">
-          <strong>Name</strong>
-          <p>{employee?.name || "-"}</p>
-        </div>
-        <div className="stat-box">
-          <strong>Status</strong>
-          <p>{employee?.status || "-"}</p>
-        </div>
-      </div>
 
-      <div className="calendar_clock">
-        <div>
-          <h3>Current Day</h3>
-          <p>{currentTime.toDateString()}</p>
+        {/* CLOCK */}
+        <div className="calendar_clock">
+          <div>
+            <h3>Current Day</h3>
+            <p>{currentTime.toDateString()}</p>
+          </div>
+          <div>
+            <h3>Current Time</h3>
+            <p>{currentTime.toLocaleTimeString()}</p>
+          </div>
         </div>
-        <div>
-          <h3>Current Time</h3>
-          <p>{currentTime.toLocaleTimeString()}</p>
+
+        {/* BUTTONS */}
+        <div style={{ textAlign: "center", marginBottom: 40 }}>
+          <button className="in-button" onClick={handleTimeIn}>
+            🕒 Time In
+          </button>
+          <button className="out-button" onClick={handleTimeOut}>
+            🏁 Time Out
+          </button>
+          <p>{statusMessage}</p>
         </div>
-      </div>
 
-      <div style={{ marginTop: 30, textAlign: "center" }}>
-        <button onClick={handleTimeIn} className="in-button">
-          🕒 Time In
-        </button>
-        <button onClick={handleTimeOut} className="out-button">
-          🏁 Time Out
-        </button>
-        <p>{statusMessage}</p>
-      </div>
-
-      <div className="report_table" style={{ marginTop: 40 }}>
-        <h3>Your Attendance Logs</h3>
-        <div className="table-wrapper">
+        {/* TABLE */}
+        <div className="report_table">
+          <h3>Your Attendance Logs</h3>
           <table>
             <thead>
               <tr>
@@ -264,17 +183,15 @@ function EmployeePortal() {
                 <th>Time In</th>
                 <th>Status</th>
                 <th>Time Out</th>
-                <th>Working Hours</th>
               </tr>
             </thead>
             <tbody>
-              {attendanceLogs.map((log, i) => (
-                <tr key={i}>
-                  <td>{log.date || "-"}</td>
+              {attendanceLogs.map((log) => (
+                <tr key={log.id}>
+                  <td>{log.date}</td>
                   <td>{log.time_in || "-"}</td>
                   <td>{log.status || "-"}</td>
                   <td>{log.time_out || "-"}</td>
-                  <td>{log.working_hours || "-"}</td>
                 </tr>
               ))}
             </tbody>

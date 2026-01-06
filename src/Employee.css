@@ -494,3 +494,74 @@ html, body, #root {
     padding: 6px 10px;
   }
 }
+/* ================= EMPLOYEE PORTAL ================= */
+
+.employee-portal {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #8bb8f0, #6fa1e8);
+  padding: 30px 40px 60px;
+}
+
+.employee-portal .header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 35px;
+}
+
+.employee-portal .stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 30px;
+  margin-bottom: 45px;
+}
+
+.employee-portal .stat-box {
+  background: white;
+  border: 2px solid black;
+  padding: 22px;
+  text-align: center;
+}
+
+.employee-portal .calendar_clock {
+  max-width: 620px;
+  margin: 0 auto 45px;
+  background: rgba(255, 255, 255, 0.6);
+  border: 2px solid black;
+  border-radius: 12px;
+  padding: 28px;
+  display: flex;
+  justify-content: space-around;
+}
+
+.employee-portal .in-button {
+  background: #28a745;
+  color: white;
+  padding: 12px 26px;
+  border-radius: 8px;
+  border: none;
+}
+
+.employee-portal .out-button {
+  background: #dc3545;
+  color: white;
+  padding: 12px 26px;
+  border-radius: 8px;
+  border: none;
+}
+
+.employee-portal table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+.employee-portal thead {
+  background: #5fa8f5;
+}
+
+.employee-portal th,
+.employee-portal td {
+  padding: 10px;
+  text-align: center;
+}
