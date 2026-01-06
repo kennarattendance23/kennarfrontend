@@ -3,8 +3,9 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import "../EmployeePortal.css";
 
-const API_BASE = "https://kennarbackend.onrender.com/api/attendance"; 
+const API_BASE = "https://kennarbackend.onrender.com/api";
 
+/* ================= MANILA HELPERS ================= */
 const getManilaDate = () =>
   new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
 
@@ -13,10 +14,8 @@ const getManilaTime = () =>
 
 function EmployeePortal() {
   const navigate = useNavigate();
-  const storedUser = localStorage.getItem("admins");
-  const user = storedUser ? JSON.parse(storedUser) : null;
+  const user = JSON.parse(localStorage.getItem("admins"));
 
-  const [authChecked, setAuthChecked] = useState(false);
   const [employee, setEmployee] = useState(null);
   const [attendanceLogs, setAttendanceLogs] = useState([]);
   const [todayAttendance, setTodayAttendance] = useState(null);
@@ -26,15 +25,9 @@ function EmployeePortal() {
 
   /* ================= AUTH GUARD ================= */
   useEffect(() => {
-    if (!user) {
-      navigate("/login", { replace: true });
-    } else if (user.role !== "employee") {
-      navigate("/dashboard", { replace: true });
-    } else if (!user.employee_id) {
-      navigate("/login", { replace: true });
-    } else {
-      setAuthChecked(true); // user is valid
-    }
+    if (!user) navigate("/login", { replace: true });
+    else if (user.role !== "employee") navigate("/dashboard", { replace: true });
+    else if (!user.employee_id) navigate("/login", { replace: true });
   }, [user, navigate]);
 
   /* ================= CLOCK ================= */
@@ -50,14 +43,12 @@ function EmployeePortal() {
 
   /* ================= FETCH EMPLOYEE ================= */
   useEffect(() => {
-    if (!authChecked || !user?.employee_id) return;
+    if (!user?.employee_id) return;
 
     axios
       .get(`${API_BASE}/employees`)
       .then((res) => {
-        const empArray = Array.isArray(res.data)
-          ? res.data
-          : res.data.data || [];
+        const empArray = Array.isArray(res.data) ? res.data : res.data.data || [];
         const emp = empArray.find(
           (e) => Number(e.employee_id) === Number(user.employee_id)
         );
@@ -67,64 +58,76 @@ function EmployeePortal() {
         console.error("Error fetching employee:", err.response || err);
         navigate("/login", { replace: true });
       });
-  }, [authChecked, user, navigate]);
+  }, [user, navigate]);
 
   /* ================= FETCH ATTENDANCE ================= */
-  const fetchAttendanceLogs = async (empId) => {
-    if (!empId) return;
-    setLoading(true);
-    try {
-      const res = await axios.get(`${API_BASE}/attendance`);
-      const allLogs = Array.isArray(res.data) ? res.data : res.data.data || [];
-      const logs = allLogs.filter(
-        (a) => Number(a.employee_id) === Number(empId)
-      );
-      setAttendanceLogs(logs);
-
-      const today = getManilaDate();
-      let todayLog = logs.find(
-        (l) => new Date(l.date).toDateString() === new Date(today).toDateString()
-      );
-
-      if (!todayLog) {
-        // Create today's attendance if missing
-        try {
-          const createRes = await axios.post(`${API_BASE}/attendance`, {
-            employee_id: empId,
-            fullname: employee?.name || employee?.fullname || user.name || "Employee",
-            date: today,
-            status: "Present",
-          });
-          todayLog = createRes.data;
-        } catch (err) {
-          console.error("Could not create today's attendance:", err.response || err);
-          todayLog = {
-            employee_id: empId,
-            fullname: employee?.name || employee?.fullname || user.name || "Employee",
-            date: today,
-            status: "Unknown",
-            time_in: null,
-            time_out: null,
-            working_hours: null,
-          };
-          setStatusMessage("Using placeholder attendance. Time In will create record.");
-        }
-      }
-
-      setTodayAttendance(todayLog);
-    } catch (err) {
-      console.error("Attendance fetch error:", err.response || err);
-      setStatusMessage("Failed to load attendance.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    if (employee?.employee_id) {
-      fetchAttendanceLogs(employee.employee_id);
-    }
-  }, [employee]);
+    if (!employee?.employee_id) return;
+
+    const fetchAttendance = async () => {
+      setLoading(true);
+      setStatusMessage("");
+
+      try {
+        const res = await axios.get(`${API_BASE}/attendance`);
+        const allLogs = Array.isArray(res.data) ? res.data : res.data.data || [];
+        const logs = allLogs.filter(
+          (a) => Number(a.employee_id) === Number(employee.employee_id)
+        );
+        setAttendanceLogs(logs);
+
+        const today = getManilaDate();
+        let todayLog = logs.find(
+          (l) =>
+            new Date(l.date).toDateString() === new Date(today).toDateString()
+        );
+
+        // Create attendance if missing
+        if (!todayLog) {
+          try {
+            const createRes = await axios.post(`${API_BASE}/attendance`, {
+              employee_id: employee.employee_id,
+              fullname: employee.name || employee.fullname || user.name || "Employee",
+              date: today,
+              status: "Present",
+            });
+            todayLog = createRes.data;
+          } catch (err) {
+            console.error("Could not create today's attendance:", err.response || err);
+            // Use placeholder to allow Time In
+            todayLog = {
+              employee_id: employee.employee_id,
+              fullname: employee.name || employee.fullname || user.name || "Employee",
+              date: today,
+              status: "Unknown",
+              time_in: null,
+              time_out: null,
+              working_hours: null,
+            };
+            setStatusMessage("Using placeholder attendance. Time In will create record.");
+          }
+        }
+
+        setTodayAttendance(todayLog);
+      } catch (err) {
+        console.error("Attendance fetch error:", err.response || err);
+        setTodayAttendance({
+          employee_id: employee.employee_id,
+          fullname: employee.name || employee.fullname || user.name || "Employee",
+          date: getManilaDate(),
+          status: "Unknown",
+          time_in: null,
+          time_out: null,
+          working_hours: null,
+        });
+        setStatusMessage("Failed to load attendance. Using placeholder.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAttendance();
+  }, [employee, user]);
 
   /* ================= TIME IN ================= */
   const handleTimeIn = async () => {
@@ -133,28 +136,30 @@ function EmployeePortal() {
     setLoading(true);
     try {
       let attendanceId = todayAttendance.id;
-      const timeIn = getManilaTime();
 
+      // If no record yet, create attendance with time_in
       if (!attendanceId) {
         const res = await axios.post(`${API_BASE}/attendance`, {
           employee_id: employee.employee_id,
           fullname: employee.name || employee.fullname || user.name || "Employee",
           date: getManilaDate(),
           status: "Present",
-          time_in: timeIn,
+          time_in: getManilaTime(),
         });
         attendanceId = res.data.id;
+        setTodayAttendance(res.data);
       } else {
+        const timeIn = getManilaTime();
         await axios.put(`${API_BASE}/attendance/${attendanceId}/time-in`, {
           time_in: timeIn,
         });
+        setTodayAttendance((prev) => ({ ...prev, time_in: timeIn }));
       }
 
       setStatusMessage("Time In recorded successfully.");
-      await fetchAttendanceLogs(employee.employee_id);
     } catch (err) {
       console.error("Time In error:", err.response || err);
-      setStatusMessage("Failed to time in. Check backend route.");
+      setStatusMessage("Failed to time in.");
     } finally {
       setLoading(false);
     }
@@ -172,16 +177,21 @@ function EmployeePortal() {
       const [h, m, s] = todayAttendance.time_in.split(":").map(Number);
       const [oh, om, os] = timeOut.split(":").map(Number);
       const hours =
-        Math.round(((oh * 3600 + om * 60 + os - (h * 3600 + m * 60 + s)) / 3600) * 100) /
-        100;
+        Math.round(((oh * 3600 + om * 60 + os - (h * 3600 + m * 60 + s)) / 3600) * 100) / 100;
 
       if (attendanceId) {
         await axios.put(`${API_BASE}/attendance/${attendanceId}`, {
           time_out: timeOut,
           working_hours: Math.max(0, hours),
         });
+        setTodayAttendance((prev) => ({
+          ...prev,
+          time_out: timeOut,
+          working_hours: Math.max(0, hours),
+        }));
       } else {
-        await axios.post(`${API_BASE}/attendance`, {
+        // Create record if somehow missing
+        const res = await axios.post(`${API_BASE}/attendance`, {
           employee_id: employee.employee_id,
           fullname: employee.name || employee.fullname || user.name || "Employee",
           date: getManilaDate(),
@@ -190,23 +200,19 @@ function EmployeePortal() {
           time_out: timeOut,
           working_hours: Math.max(0, hours),
         });
+        setTodayAttendance(res.data);
       }
 
       setStatusMessage("Time Out recorded successfully.");
-      await fetchAttendanceLogs(employee.employee_id);
     } catch (err) {
       console.error("Time Out error:", err.response || err);
-      setStatusMessage("Failed to time out. Check backend route.");
+      setStatusMessage("Failed to time out.");
     } finally {
       setLoading(false);
     }
   };
 
   /* ================= UI ================= */
-  if (!authChecked) {
-    return <p>Loading...</p>; // prevent flash before auth
-  }
-
   return (
     <div className="dashboard-main">
       <div className="header">
@@ -215,7 +221,7 @@ function EmployeePortal() {
           className="logout-btn"
           onClick={() => {
             localStorage.removeItem("admins");
-            navigate("/login", { replace: true });
+            window.location.href = "/login";
           }}
         >
           Logout
@@ -266,7 +272,9 @@ function EmployeePortal() {
         </button>
       </div>
 
-      <p style={{ textAlign: "center", fontWeight: "bold" }}>{statusMessage}</p>
+      <p style={{ textAlign: "center", fontWeight: "bold" }}>
+        {statusMessage}
+      </p>
 
       <div className="report_table">
         <h3>Your Attendance Logs</h3>
