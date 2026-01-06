@@ -26,9 +26,11 @@ function EmployeePortal() {
 
   /* ================= AUTH GUARD ================= */
   useEffect(() => {
-    if (!user) return navigate("/login", { replace: true });
-    if (user.role !== "employee")
-      return navigate("/dashboard", { replace: true });
+    if (!user) navigate("/login", { replace: true });
+    else if (user.role !== "employee")
+      navigate("/dashboard", { replace: true });
+    else if (!user.employee_id)
+      navigate("/login", { replace: true });
   }, [user, navigate]);
 
   /* ================= CLOCK ================= */
@@ -39,30 +41,27 @@ function EmployeePortal() {
       });
       setCurrentTime(new Date(manilaNow));
     }, 1000);
-
     return () => clearInterval(interval);
   }, []);
 
   /* ================= FETCH EMPLOYEE ================= */
   useEffect(() => {
-    const fetchEmployee = async () => {
-      try {
-        const res = await axios.get(`${API_BASE}/employees`);
+    if (!user?.employee_id) return;
+
+    axios
+      .get(`${API_BASE}/employees`)
+      .then((res) => {
         const emp = res.data.find(
           (e) => Number(e.employee_id) === Number(user.employee_id)
         );
-        setEmployee(emp);
-      } catch {
-        navigate("/login", { replace: true });
-      }
-    };
-
-    fetchEmployee();
+        setEmployee(emp || user);
+      })
+      .catch(() => navigate("/login", { replace: true }));
   }, [user, navigate]);
 
   /* ================= FETCH ATTENDANCE ================= */
   useEffect(() => {
-    if (!employee) return;
+    if (!employee?.employee_id) return;
 
     const fetchAttendance = async () => {
       setLoading(true);
@@ -75,8 +74,21 @@ function EmployeePortal() {
         setAttendanceLogs(logs);
 
         const today = getManilaDate();
-        const todayLog = logs.find((l) => l.date === today);
+        let todayLog = logs.find((l) => l.date === today);
+
+        if (!todayLog) {
+          const create = await axios.post(`${API_BASE}/attendance`, {
+            employee_id: employee.employee_id,
+            fullname: employee.name,
+            date: today,
+            status: "Present",
+          });
+          todayLog = create.data;
+        }
+
         setTodayAttendance(todayLog);
+      } catch (err) {
+        console.error(err);
       } finally {
         setLoading(false);
       }
@@ -98,7 +110,7 @@ function EmployeePortal() {
       );
       window.location.reload();
     } catch {
-      setStatusMessage("Failed to time in");
+      setStatusMessage("Failed to time in.");
     }
   };
 
@@ -108,74 +120,85 @@ function EmployeePortal() {
       return;
 
     try {
+      const timeOut = currentTime.toLocaleTimeString("en-GB");
+
+      const [h, m, s] = todayAttendance.time_in.split(":").map(Number);
+      const [oh, om, os] = timeOut.split(":").map(Number);
+
+      const hours =
+        Math.round(
+          ((oh * 3600 + om * 60 + os - (h * 3600 + m * 60 + s)) / 3600) * 100
+        ) / 100;
+
       await axios.put(`${API_BASE}/attendance/${todayAttendance.id}`, {
-        time_out: currentTime.toLocaleTimeString("en-GB"),
+        time_out: timeOut,
+        working_hours: Math.max(0, hours),
       });
+
       window.location.reload();
     } catch {
-      setStatusMessage("Failed to time out");
+      setStatusMessage("Failed to time out.");
     }
   };
 
+  /* ================= UI ================= */
   return (
-    <div className="employee-scroll">
-      <div className="employee-portal">
-        {/* HEADER */}
-        <div className="header">
-          <h1>EMPLOYEE PORTAL</h1>
-          <button
-            className="logout-btn"
-            onClick={() => {
-              localStorage.removeItem("admins");
-              navigate("/login");
-            }}
-          >
-            Logout
-          </button>
-        </div>
+    <div className="dashboard-main">
+      <div className="header">
+        <h1>EMPLOYEE PORTAL</h1>
+        <button
+          className="logout-btn"
+          onClick={() => {
+            localStorage.removeItem("admins");
+            window.location.href = "/login";
+          }}
+        >
+          Logout
+        </button>
+      </div>
 
-        {/* INFO BOXES */}
-        <div className="stats-grid">
-          <div className="stat-box">
-            <strong>Employee ID</strong>
-            <p>{employee?.employee_id}</p>
-          </div>
-          <div className="stat-box">
-            <strong>Name</strong>
-            <p>{employee?.name}</p>
-          </div>
-          <div className="stat-box">
-            <strong>Status</strong>
-            <p>{employee?.status}</p>
-          </div>
+      <div className="stats-grid">
+        <div className="stat-box">
+          <strong>Employee ID</strong>
+          <p>{employee?.employee_id || "-"}</p>
         </div>
-
-        {/* CLOCK */}
-        <div className="calendar_clock">
-          <div>
-            <h3>Current Day</h3>
-            <p>{currentTime.toDateString()}</p>
-          </div>
-          <div>
-            <h3>Current Time</h3>
-            <p>{currentTime.toLocaleTimeString()}</p>
-          </div>
+        <div className="stat-box">
+          <strong>Name</strong>
+          <p>{employee?.name || "-"}</p>
         </div>
-
-        {/* BUTTONS */}
-        <div style={{ textAlign: "center", marginBottom: 40 }}>
-          <button className="in-button" onClick={handleTimeIn}>
-            Time In
-          </button>
-          <button className="out-button" onClick={handleTimeOut}>
-             Time Out
-          </button>
-          <p>{statusMessage}</p>
+        <div className="stat-box">
+          <strong>Status</strong>
+          <p>{employee?.status || "Active"}</p>
         </div>
+      </div>
 
-        {/* TABLE */}
-        <div className="report_table">
-          <h3>Your Attendance Logs</h3>
+      <div className="calendar_clock">
+        <div>
+          <h3>Current Day</h3>
+          <p>{currentTime.toDateString()}</p>
+        </div>
+        <div>
+          <h3>Current Time</h3>
+          <p>{currentTime.toLocaleTimeString()}</p>
+        </div>
+      </div>
+
+      <div className="button-row">
+        <button className="in-button" onClick={handleTimeIn}>
+           Time In
+        </button>
+        <button className="out-button" onClick={handleTimeOut}>
+           Time Out
+        </button>
+      </div>
+
+      <p style={{ textAlign: "center", fontWeight: "bold" }}>
+        {statusMessage}
+      </p>
+
+      <div className="report_table">
+        <h3>Your Attendance Logs</h3>
+        <div className="table-wrapper">
           <table>
             <thead>
               <tr>
@@ -183,15 +206,17 @@ function EmployeePortal() {
                 <th>Time In</th>
                 <th>Status</th>
                 <th>Time Out</th>
+                <th>Working Hours</th>
               </tr>
             </thead>
             <tbody>
-              {attendanceLogs.map((log) => (
-                <tr key={log.id}>
+              {attendanceLogs.map((log, i) => (
+                <tr key={i}>
                   <td>{log.date}</td>
                   <td>{log.time_in || "-"}</td>
                   <td>{log.status || "-"}</td>
                   <td>{log.time_out || "-"}</td>
+                  <td>{log.working_hours || "-"}</td>
                 </tr>
               ))}
             </tbody>

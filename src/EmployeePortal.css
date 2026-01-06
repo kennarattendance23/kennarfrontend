@@ -1,177 +1,113 @@
-/* ------------------------ DASHBOARD MAIN ------------------------ */
 .dashboard-main {
-    height: 100vh;
-    background-image: url('kenkenbg.jpg');
-    background-size: cover;
-    background-position: center;
-    color: rgb(0, 0, 0);
-    padding: 20px;
-    margin: 0;
-    flex: 1;
+  min-height: 100vh;
+  background-image: url("kenkenbg.jpg");
+  background-size: cover;
+  background-position: center;
+  padding: 20px 30px 60px;
+  color: black;
+  overflow-y: auto;
 }
 
-/* ------------------------ HEADER ------------------------ */
+/* HEADER */
 .header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .header h1 {
-    color: black;
+  font-weight: 800;
 }
 
-/* ------------------------ SIDEBAR ------------------------ */
-.sidebar {
-    width: 220px;
-    background: #89bdf4;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 1rem;
-}
-
-.avatar {
-    width: 100px;
-    border-radius: 50%;
-    margin-bottom: 10px;
-}
-
-.nav-btn {
-    background: #d3e8fd;
-    border: none;
-    padding: 10px;
-    margin: 5px 0;
-    width: 100%;
-    text-align: left;
-    font-weight: bold;
-    cursor: pointer;
-}
-
-/* ------------------------ LOGOUT BUTTON ------------------------ */
 .logout-btn {
-    background-color: #007bff;
-    border: none;
-    padding: 8px 16px;
-    cursor: pointer;
-    border-radius: 5px;
-    color: white;
-    transition: background-color 0.3s ease;
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 8px 18px;
+  border-radius: 5px;
+  cursor: pointer;
 }
 
-/* ------------------------ STATS ------------------------ */
+/* STATS */
 .stats-grid {
-    display: flex;
-    gap: 1rem;
-    margin: 1rem 0;
+  display: flex;
+  gap: 2rem;
+  margin: 25px 0 40px;
 }
 
 .stat-box {
-    background: white;
-    flex: 1;
-    padding: 1rem;
-    border: 2px solid black;
-    text-align: center;
-    font-family: 'Courier New', Courier, monospace;
-    font-size: 1.2rem;
-    color: black;
-    height: 20%;
+  background: white;
+  flex: 1;
+  padding: 20px;
+  border: 2px solid black;
+  text-align: center;
+  font-family: "Courier New", Courier, monospace;
 }
 
-/* ------------------------ IN/OUT BUTTONS ------------------------ */
-.in-button,
-.out-button {
-    padding: 20px 30px;
-    font-size: 16px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
+/* CLOCK */
+.calendar_clock {
+  width: 55%;
+  margin: 0 auto 40px;
+  display: flex;
+  justify-content: space-around;
+  background: rgba(183, 220, 255, 0.85);
+  padding: 30px;
+  border-radius: 12px;
+  border: 2px solid black;
+}
+
+/* BUTTONS */
+.button-row {
+  display: flex;
+  justify-content: center;
+  gap: 25px;
+  margin-bottom: 15px;
 }
 
 .in-button {
-    background-color: #28a745;
-    color: white;
-}
-
-.in-button:hover {
-    background-color: #218838;
+  background: #28a745;
+  color: white;
+  padding: 14px 30px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
 }
 
 .out-button {
-    background-color: #dc3545;
-    color: white;
-    margin-left: 5%;
+  background: #dc3545;
+  color: white;
+  padding: 14px 30px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
 }
 
-.out-button:hover {
-    background-color: #c82333;
-}
-
-/* ------------------------ REPORT TABLE ------------------------ */
+/* TABLE */
 .report_table {
-    padding: 0 20px;
-}
-
-.report_table table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 15px;
-    text-align: center;
-    background-color: #f7f7f7;
-    border: 1px solid #ccc;
-    color: black;
-}
-
-.report_table th {
-    padding: 10px;
-    border: 1px solid #ccc;
-    background-color: #59a5f0;
-    text-align: center;
-    color: white;
-}
-
-.report_table td {
-    padding: 10px;
-    border: 1px solid #ccc;
-    text-align: center;
-    color: black;
+  margin-top: 40px;
 }
 
 .report_table h3 {
-    font-size: 25px;
-    text-align: left;
-    color: black;
+  margin-bottom: 10px;
 }
 
-/* ------------------------ CALENDAR & CLOCK ------------------------ */
-.calendar_clock {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background: rgba(183, 220, 255, 0.8);
-    gap: 10%;
-    margin: 5% 0 5% 25%;
-    width: 50%;
-    border-radius: 10px;
-    border: 2px solid black;
-    font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
-}
-
-.calendars,
-.clocks {
-    text-align: center;
-    font-size: 25px;
-    color: black;
-}
-/* Make portal scrollable if content overflows */
-.dashboard-main {
-  max-height: 100vh; /* full screen height */
-  overflow-y: auto;  /* enable vertical scrolling */
-  padding: 20px;
-  background-color: #f9f9f9; /* optional light background */
-}
-
-/* Make table scrollable horizontally on small screens */
 .table-wrapper {
   overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #f7f7f7;
+}
+
+th {
+  background: #59a5f0;
+  color: white;
+  padding: 12px;
+}
+
+td {
+  padding: 10px;
+  border: 1px solid #ccc;
 }
