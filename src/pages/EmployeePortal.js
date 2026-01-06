@@ -5,6 +5,14 @@ import "../EmployeePortal.css";
 
 const API_BASE = "https://kennarbackend.onrender.com/api";
 
+/* ================= MANILA DATE HELPER ================= */
+const getManilaDate = () => {
+  const manila = new Date().toLocaleString("en-CA", {
+    timeZone: "Asia/Manila",
+  });
+  return manila.split(",")[0]; // YYYY-MM-DD
+};
+
 function EmployeePortal() {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem("admins"));
@@ -15,14 +23,15 @@ function EmployeePortal() {
   const [statusMessage, setStatusMessage] = useState("");
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  /* ================= AUTH + ROLE GUARD ================= */
+  /* ================= AUTH GUARD ================= */
   useEffect(() => {
-    if (!user) navigate("/login", { replace: true });
-    if (user?.role !== "employee") navigate("/dashboard", { replace: true });
-    if (!user?.employee_id) navigate("/login", { replace: true });
+    if (!user) return navigate("/login", { replace: true });
+    if (user?.role !== "employee")
+      return navigate("/dashboard", { replace: true });
+    if (!user?.employee_id) return navigate("/login", { replace: true });
   }, [user, navigate]);
 
-  /* ================= CLOCK ================= */
+  /* ================= CLOCK (MANILA TIME) ================= */
   useEffect(() => {
     const interval = setInterval(() => {
       const manilaTime = new Date().toLocaleString("en-US", {
@@ -51,7 +60,7 @@ function EmployeePortal() {
       );
   }, [user]);
 
-  /* ================= FETCH ATTENDANCE ================= */
+  /* ================= FETCH / CREATE ATTENDANCE ================= */
   const fetchAttendanceLogs = async () => {
     if (!employee?.employee_id) return;
 
@@ -64,28 +73,25 @@ function EmployeePortal() {
 
       setAttendanceLogs(logs);
 
-      // Find today's record
-      const today = new Date().toISOString().split("T")[0];
-      let todayRecord = logs.find((log) =>
-        log.date?.startsWith(today)
-      );
+      const today = getManilaDate();
 
-      // If no record, create one
+      let todayRecord = logs.find((log) => log.date === today);
+
+      // ✅ Auto-create today record
       if (!todayRecord) {
         const createRes = await axios.post(`${API_BASE}/attendance`, {
           employee_id: employee.employee_id,
           fullname: employee.name,
           date: today,
+          status: "pending",
         });
+
         todayRecord = createRes.data;
       }
 
       setTodayAttendance(todayRecord);
     } catch (err) {
-      console.error(
-        "❌ Attendance fetch/create error:",
-        err.response || err
-      );
+      console.error("❌ Attendance fetch/create error:", err.response || err);
     }
   };
 
@@ -95,8 +101,13 @@ function EmployeePortal() {
 
   /* ================= TIME IN ================= */
   const handleTimeIn = async () => {
-    if (!todayAttendance) {
-      setStatusMessage("❌ No attendance record found for today.");
+    if (!todayAttendance?.attendance_id) {
+      setStatusMessage("❌ Attendance record not initialized yet.");
+      return;
+    }
+
+    if (todayAttendance.time_in) {
+      setStatusMessage("⚠️ You already timed in.");
       return;
     }
 
@@ -108,18 +119,28 @@ function EmployeePortal() {
         { time_in: timeString }
       );
 
-      setStatusMessage("🟢 Time-in recorded.");
+      setStatusMessage("🟢 Time-in submitted successfully.");
       fetchAttendanceLogs();
     } catch (err) {
-      console.error("Time-in error:", err.response || err);
+      console.error("❌ Time-in error:", err.response || err);
       setStatusMessage("❌ Failed to time-in.");
     }
   };
 
   /* ================= TIME OUT ================= */
   const handleTimeOut = async () => {
-    if (!todayAttendance) {
-      setStatusMessage("❌ No attendance record found for today.");
+    if (!todayAttendance?.attendance_id) {
+      setStatusMessage("❌ Attendance record not initialized yet.");
+      return;
+    }
+
+    if (!todayAttendance.time_in) {
+      setStatusMessage("⚠️ You must time in first.");
+      return;
+    }
+
+    if (todayAttendance.time_out) {
+      setStatusMessage("⚠️ You already timed out.");
       return;
     }
 
@@ -127,16 +148,14 @@ function EmployeePortal() {
       const timeOutString = currentTime.toLocaleTimeString("en-GB");
       let workingHours = 0;
 
-      if (todayAttendance.time_in) {
-        const [h, m, s] = todayAttendance.time_in.split(":").map(Number);
-        const [oh, om, os] = timeOutString.split(":").map(Number);
+      const [h, m, s] = todayAttendance.time_in.split(":").map(Number);
+      const [oh, om, os] = timeOutString.split(":").map(Number);
 
-        const timeInSec = h * 3600 + m * 60 + s;
-        const timeOutSec = oh * 3600 + om * 60 + os;
+      const timeInSec = h * 3600 + m * 60 + s;
+      const timeOutSec = oh * 3600 + om * 60 + os;
 
-        workingHours = Math.max(0, (timeOutSec - timeInSec) / 3600);
-        workingHours = Math.round(workingHours * 100) / 100;
-      }
+      workingHours = Math.max(0, (timeOutSec - timeInSec) / 3600);
+      workingHours = Math.round(workingHours * 100) / 100;
 
       await axios.put(
         `${API_BASE}/attendance/${todayAttendance.attendance_id}`,
@@ -146,10 +165,10 @@ function EmployeePortal() {
         }
       );
 
-      setStatusMessage("🔴 Time-out recorded.");
+      setStatusMessage("🔴 Time-out submitted successfully.");
       fetchAttendanceLogs();
     } catch (err) {
-      console.error("Time-out error:", err.response || err);
+      console.error("❌ Time-out error:", err.response || err);
       setStatusMessage("❌ Failed to time-out.");
     }
   };
@@ -222,11 +241,7 @@ function EmployeePortal() {
             <tbody>
               {attendanceLogs.map((log, i) => (
                 <tr key={i}>
-                  <td>
-                    {log.date
-                      ? new Date(log.date).toLocaleDateString()
-                      : "-"}
-                  </td>
+                  <td>{log.date}</td>
                   <td>{log.time_in || "-"}</td>
                   <td>{log.status || "-"}</td>
                   <td>{log.time_out || "-"}</td>
