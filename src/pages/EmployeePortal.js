@@ -165,10 +165,10 @@ function EmployeePortal() {
         {/* BUTTONS */}
         <div style={{ textAlign: "center", marginBottom: 40 }}>
           <button className="in-button" onClick={handleTimeIn}>
-            🕒 Time In
+            Time In
           </button>
           <button className="out-button" onClick={handleTimeOut}>
-            🏁 Time Out
+             Time Out
           </button>
           <p>{statusMessage}</p>
         </div>
