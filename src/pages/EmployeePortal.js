@@ -48,7 +48,8 @@ function EmployeePortal() {
     axios
       .get(`${API_BASE}/employees`)
       .then((res) => {
-        const emp = res.data.find(
+        const empArray = Array.isArray(res.data) ? res.data : res.data.data || [];
+        const emp = empArray.find(
           (e) => Number(e.employee_id) === Number(user.employee_id)
         );
         if (!emp) {
@@ -71,11 +72,11 @@ function EmployeePortal() {
       setStatusMessage("");
 
       try {
-        // Step 1: Fetch all attendance logs
         const res = await axios.get(`${API_BASE}/attendance`);
-        console.log("Fetched all attendance:", res.data);
+        const allLogs = Array.isArray(res.data) ? res.data : res.data.data || [];
+        console.log("Fetched all attendance:", allLogs);
 
-        const logs = res.data.filter(
+        const logs = allLogs.filter(
           (a) => Number(a.employee_id) === Number(employee.employee_id)
         );
         setAttendanceLogs(logs);
@@ -83,10 +84,12 @@ function EmployeePortal() {
         const today = getManilaDate();
         console.log("Today's date:", today);
 
-        // Step 2: Find today's attendance
-        let todayLog = logs.find((l) => l.date === today);
+        // Try to find today's attendance (allow for minor date format differences)
+        let todayLog = logs.find(
+          (l) =>
+            new Date(l.date).toDateString() === new Date(today).toDateString()
+        );
 
-        // Step 3: Create today's record if missing
         if (!todayLog) {
           console.log("No attendance for today, attempting to create...");
           try {
@@ -99,28 +102,35 @@ function EmployeePortal() {
             todayLog = createRes.data;
             console.log("Created today's attendance:", todayLog);
           } catch (createErr) {
-            console.error("Error creating today's attendance:", createErr.response || createErr);
-            // Retry fetching after failed creation (record may already exist)
-            const retryRes = await axios.get(`${API_BASE}/attendance`);
-            todayLog = retryRes.data.find(
-              (l) =>
-                Number(l.employee_id) === Number(employee.employee_id) &&
-                l.date === today
-            );
-            if (todayLog) {
-              console.log("Fetched today's attendance on retry:", todayLog);
-            }
+            console.error("Error creating attendance:", createErr.response || createErr);
+            // fallback: use placeholder if still fails
+            todayLog = {
+              employee_id: employee.employee_id,
+              fullname: employee.name || employee.fullname || user.name || "Employee",
+              date: today,
+              status: "Unknown",
+              time_in: null,
+              time_out: null,
+              working_hours: null,
+            };
+            setStatusMessage("Could not load today's attendance. Using placeholder.");
           }
-        }
-
-        if (!todayLog) {
-          throw new Error("Attendance record for today could not be loaded.");
         }
 
         setTodayAttendance(todayLog);
       } catch (err) {
-        console.error("Attendance error:", err.response || err);
-        setStatusMessage("Failed to load attendance.");
+        console.error("Attendance fetch error:", err.response || err);
+        // fallback: placeholder
+        setTodayAttendance({
+          employee_id: employee.employee_id,
+          fullname: employee.name || employee.fullname || user.name || "Employee",
+          date: getManilaDate(),
+          status: "Unknown",
+          time_in: null,
+          time_out: null,
+          working_hours: null,
+        });
+        setStatusMessage("Failed to load attendance. Using placeholder.");
       } finally {
         setLoading(false);
       }
@@ -131,21 +141,21 @@ function EmployeePortal() {
 
   /* ================= TIME IN ================= */
   const handleTimeIn = async () => {
-    if (loading || !todayAttendance?.id || todayAttendance.time_in) return;
+    if (loading || !todayAttendance?.employee_id || todayAttendance.time_in) return;
 
     try {
       const timeIn = getManilaTime();
 
-      await axios.put(
-        `${API_BASE}/attendance/${todayAttendance.id}/time-in`,
-        { time_in: timeIn }
-      );
+      if (todayAttendance.id) {
+        await axios.put(`${API_BASE}/attendance/${todayAttendance.id}/time-in`, {
+          time_in: timeIn,
+        });
+      }
 
       setTodayAttendance((prev) => ({
         ...prev,
         time_in: timeIn,
       }));
-
       setStatusMessage("Time In recorded successfully.");
     } catch (err) {
       console.error("Time In error:", err.response || err);
@@ -157,7 +167,7 @@ function EmployeePortal() {
   const handleTimeOut = async () => {
     if (
       loading ||
-      !todayAttendance?.id ||
+      !todayAttendance?.employee_id ||
       !todayAttendance.time_in ||
       todayAttendance.time_out
     )
@@ -166,7 +176,9 @@ function EmployeePortal() {
     try {
       const timeOut = getManilaTime();
 
-      const [h, m, s] = todayAttendance.time_in.split(":").map(Number);
+      const [h, m, s] = todayAttendance.time_in
+        ? todayAttendance.time_in.split(":").map(Number)
+        : [0, 0, 0];
       const [oh, om, os] = timeOut.split(":").map(Number);
 
       const hours =
@@ -174,17 +186,18 @@ function EmployeePortal() {
           ((oh * 3600 + om * 60 + os - (h * 3600 + m * 60 + s)) / 3600) * 100
         ) / 100;
 
-      await axios.put(`${API_BASE}/attendance/${todayAttendance.id}`, {
-        time_out: timeOut,
-        working_hours: Math.max(0, hours),
-      });
+      if (todayAttendance.id) {
+        await axios.put(`${API_BASE}/attendance/${todayAttendance.id}`, {
+          time_out: timeOut,
+          working_hours: Math.max(0, hours),
+        });
+      }
 
       setTodayAttendance((prev) => ({
         ...prev,
         time_out: timeOut,
         working_hours: Math.max(0, hours),
       }));
-
       setStatusMessage("Time Out recorded successfully.");
     } catch (err) {
       console.error("Time Out error:", err.response || err);
@@ -233,12 +246,6 @@ function EmployeePortal() {
           <p>{currentTime.toLocaleTimeString()}</p>
         </div>
       </div>
-
-      {!todayAttendance && !loading && (
-        <p style={{ textAlign: "center", color: "red", fontWeight: "bold" }}>
-          Attendance record for today could not be loaded.
-        </p>
-      )}
 
       <div className="button-row">
         <button
