@@ -32,7 +32,7 @@ function EmployeePortal() {
     if (!user.employee_id) return navigate("/login", { replace: true });
   }, [user, navigate]);
 
-  /* ================= CLOCK (MANILA TIME) ================= */
+  /* ================= CLOCK ================= */
   useEffect(() => {
     const interval = setInterval(() => {
       const manilaNow = new Date().toLocaleString("en-US", {
@@ -70,38 +70,47 @@ function EmployeePortal() {
 
     const fetchAttendanceLogs = async () => {
       setLoading(true);
+
       try {
         const res = await axios.get(`${API_BASE}/attendance`);
-        const logs = res.data.filter(
-          (a) => Number(a.employee_id) === Number(employee.employee_id)
-        );
+        const logs = res.data
+          .filter((a) => Number(a.employee_id) === Number(employee.employee_id))
+          .map((a) => ({
+            id: a.id,
+            employee_id: a.employee_id,
+            fullname: a.fullname,
+            date: a.date, // already DATE
+            status: a.status || "Present",
+            time_in: a.time_in || null,
+            time_out: a.time_out || null,
+            working_hours: a.working_hours || 0,
+          }));
 
         setAttendanceLogs(logs);
 
         const today = getManilaDate();
 
-        let todayRecord = logs.find((log) => {
-          if (!log.date) return false;
-          const logDate = new Date(log.date).toLocaleDateString("en-CA", {
-            timeZone: "Asia/Manila",
-          });
-          return logDate === today;
-        });
+        let todayRecord = logs.find((log) => log.date === today);
 
         if (!todayRecord) {
+          // Create new attendance
           const createRes = await axios.post(`${API_BASE}/attendance`, {
             employee_id: employee.employee_id,
             fullname: employee.name,
             date: today,
-            status: "pending",
+            status: "Present",
           });
 
-          todayRecord = createRes.data;
-
-          // fallback if backend returns minimal fields
-          if (!todayRecord.date) todayRecord.date = today;
-          if (!todayRecord.attendance_id && createRes.data.id)
-            todayRecord.attendance_id = createRes.data.id;
+          todayRecord = {
+            id: createRes.data.id,
+            employee_id: employee.employee_id,
+            fullname: employee.name,
+            date: today,
+            status: "Present",
+            time_in: null,
+            time_out: null,
+            working_hours: 0,
+          };
         }
 
         setTodayAttendance(todayRecord);
@@ -122,7 +131,7 @@ function EmployeePortal() {
       return;
     }
 
-    if (!todayAttendance?.attendance_id) {
+    if (!todayAttendance?.id) {
       setStatusMessage("❌ Attendance record not ready yet.");
       return;
     }
@@ -134,13 +143,12 @@ function EmployeePortal() {
 
     try {
       const time = currentTime.toLocaleTimeString("en-GB");
-      await axios.put(
-        `${API_BASE}/attendance/${todayAttendance.attendance_id}/time-in`,
-        { time_in: time }
-      );
 
-      setStatusMessage("🟢 Time-in submitted successfully.");
-      // Refresh logs after Time In
+      await axios.put(`${API_BASE}/attendance/${todayAttendance.id}/time-in`, {
+        time_in: time,
+      });
+
+      setStatusMessage("🟢 Time-in recorded successfully.");
       window.location.reload();
     } catch (err) {
       console.error("❌ Time-in error:", err.response || err);
@@ -155,7 +163,7 @@ function EmployeePortal() {
       return;
     }
 
-    if (!todayAttendance?.attendance_id) {
+    if (!todayAttendance?.id) {
       setStatusMessage("❌ Attendance record not ready yet.");
       return;
     }
@@ -181,16 +189,12 @@ function EmployeePortal() {
           ((oh * 3600 + om * 60 + os - (h * 3600 + m * 60 + s)) / 3600) * 100
         ) / 100;
 
-      await axios.put(
-        `${API_BASE}/attendance/${todayAttendance.attendance_id}`,
-        {
-          time_out: timeOut,
-          working_hours: Math.max(0, hours),
-        }
-      );
+      await axios.put(`${API_BASE}/attendance/${todayAttendance.id}`, {
+        time_out: timeOut,
+        working_hours: Math.max(0, hours),
+      });
 
-      setStatusMessage("🔴 Time-out submitted successfully.");
-      // Refresh logs after Time Out
+      setStatusMessage("🔴 Time-out recorded successfully.");
       window.location.reload();
     } catch (err) {
       console.error("❌ Time-out error:", err.response || err);
@@ -266,7 +270,7 @@ function EmployeePortal() {
             <tbody>
               {attendanceLogs.map((log, i) => (
                 <tr key={i}>
-                  <td>{log.date ? new Date(log.date).toLocaleDateString("en-CA") : "-"}</td>
+                  <td>{log.date || "-"}</td>
                   <td>{log.time_in || "-"}</td>
                   <td>{log.status || "-"}</td>
                   <td>{log.time_out || "-"}</td>
