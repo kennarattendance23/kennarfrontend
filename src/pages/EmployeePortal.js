@@ -3,7 +3,7 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import "../EmployeePortal.css";
 
-const API_BASE = "https://kennarbackend.onrender.com/api/attendance"; // Ensure v1 is correct
+const API_BASE = "https://kennarbackend.onrender.com/api/v1"; // Ensure v1 is correct
 
 const getManilaDate = () =>
   new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
@@ -13,8 +13,10 @@ const getManilaTime = () =>
 
 function EmployeePortal() {
   const navigate = useNavigate();
-  const user = JSON.parse(localStorage.getItem("admins"));
+  const storedUser = localStorage.getItem("admins");
+  const user = storedUser ? JSON.parse(storedUser) : null;
 
+  const [authChecked, setAuthChecked] = useState(false);
   const [employee, setEmployee] = useState(null);
   const [attendanceLogs, setAttendanceLogs] = useState([]);
   const [todayAttendance, setTodayAttendance] = useState(null);
@@ -24,9 +26,15 @@ function EmployeePortal() {
 
   /* ================= AUTH GUARD ================= */
   useEffect(() => {
-    if (!user) navigate("/login", { replace: true });
-    else if (user.role !== "employee") navigate("/dashboard", { replace: true });
-    else if (!user.employee_id) navigate("/login", { replace: true });
+    if (!user) {
+      navigate("/login", { replace: true });
+    } else if (user.role !== "employee") {
+      navigate("/dashboard", { replace: true });
+    } else if (!user.employee_id) {
+      navigate("/login", { replace: true });
+    } else {
+      setAuthChecked(true); // user is valid
+    }
   }, [user, navigate]);
 
   /* ================= CLOCK ================= */
@@ -42,12 +50,14 @@ function EmployeePortal() {
 
   /* ================= FETCH EMPLOYEE ================= */
   useEffect(() => {
-    if (!user?.employee_id) return;
+    if (!authChecked || !user?.employee_id) return;
 
     axios
       .get(`${API_BASE}/employees`)
       .then((res) => {
-        const empArray = Array.isArray(res.data) ? res.data : res.data.data || [];
+        const empArray = Array.isArray(res.data)
+          ? res.data
+          : res.data.data || [];
         const emp = empArray.find(
           (e) => Number(e.employee_id) === Number(user.employee_id)
         );
@@ -57,7 +67,7 @@ function EmployeePortal() {
         console.error("Error fetching employee:", err.response || err);
         navigate("/login", { replace: true });
       });
-  }, [user, navigate]);
+  }, [authChecked, user, navigate]);
 
   /* ================= FETCH ATTENDANCE ================= */
   const fetchAttendanceLogs = async (empId) => {
@@ -66,7 +76,9 @@ function EmployeePortal() {
     try {
       const res = await axios.get(`${API_BASE}/attendance`);
       const allLogs = Array.isArray(res.data) ? res.data : res.data.data || [];
-      const logs = allLogs.filter((a) => Number(a.employee_id) === Number(empId));
+      const logs = allLogs.filter(
+        (a) => Number(a.employee_id) === Number(empId)
+      );
       setAttendanceLogs(logs);
 
       const today = getManilaDate();
@@ -79,7 +91,7 @@ function EmployeePortal() {
         try {
           const createRes = await axios.post(`${API_BASE}/attendance`, {
             employee_id: empId,
-            fullname: employee.name || employee.fullname || user.name || "Employee",
+            fullname: employee?.name || employee?.fullname || user.name || "Employee",
             date: today,
             status: "Present",
           });
@@ -88,7 +100,7 @@ function EmployeePortal() {
           console.error("Could not create today's attendance:", err.response || err);
           todayLog = {
             employee_id: empId,
-            fullname: employee.name || employee.fullname || user.name || "Employee",
+            fullname: employee?.name || employee?.fullname || user.name || "Employee",
             date: today,
             status: "Unknown",
             time_in: null,
@@ -124,7 +136,6 @@ function EmployeePortal() {
       const timeIn = getManilaTime();
 
       if (!attendanceId) {
-        // Create attendance record with Time In
         const res = await axios.post(`${API_BASE}/attendance`, {
           employee_id: employee.employee_id,
           fullname: employee.name || employee.fullname || user.name || "Employee",
@@ -140,7 +151,7 @@ function EmployeePortal() {
       }
 
       setStatusMessage("Time In recorded successfully.");
-      await fetchAttendanceLogs(employee.employee_id); // Refresh table
+      await fetchAttendanceLogs(employee.employee_id);
     } catch (err) {
       console.error("Time In error:", err.response || err);
       setStatusMessage("Failed to time in. Check backend route.");
@@ -161,7 +172,8 @@ function EmployeePortal() {
       const [h, m, s] = todayAttendance.time_in.split(":").map(Number);
       const [oh, om, os] = timeOut.split(":").map(Number);
       const hours =
-        Math.round(((oh * 3600 + om * 60 + os - (h * 3600 + m * 60 + s)) / 3600) * 100) / 100;
+        Math.round(((oh * 3600 + om * 60 + os - (h * 3600 + m * 60 + s)) / 3600) * 100) /
+        100;
 
       if (attendanceId) {
         await axios.put(`${API_BASE}/attendance/${attendanceId}`, {
@@ -181,7 +193,7 @@ function EmployeePortal() {
       }
 
       setStatusMessage("Time Out recorded successfully.");
-      await fetchAttendanceLogs(employee.employee_id); // Refresh table
+      await fetchAttendanceLogs(employee.employee_id);
     } catch (err) {
       console.error("Time Out error:", err.response || err);
       setStatusMessage("Failed to time out. Check backend route.");
@@ -191,6 +203,10 @@ function EmployeePortal() {
   };
 
   /* ================= UI ================= */
+  if (!authChecked) {
+    return <p>Loading...</p>; // prevent flash before auth
+  }
+
   return (
     <div className="dashboard-main">
       <div className="header">
@@ -199,7 +215,7 @@ function EmployeePortal() {
           className="logout-btn"
           onClick={() => {
             localStorage.removeItem("admins");
-            window.location.href = "/login";
+            navigate("/login", { replace: true });
           }}
         >
           Logout
