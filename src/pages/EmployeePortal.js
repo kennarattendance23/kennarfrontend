@@ -30,6 +30,7 @@ function EmployeePortal() {
       });
       setCurrentTime(new Date(manilaTime));
     }, 1000);
+
     return () => clearInterval(interval);
   }, []);
 
@@ -37,44 +38,54 @@ function EmployeePortal() {
   useEffect(() => {
     if (!user?.employee_id) return;
 
-    axios.get(`${API_BASE}/employees`)
-      .then(res => {
+    axios
+      .get(`${API_BASE}/employees`)
+      .then((res) => {
         const emp = res.data.find(
-          e => Number(e.employee_id) === Number(user.employee_id)
+          (e) => Number(e.employee_id) === Number(user.employee_id)
         );
         setEmployee(emp || user);
       })
-      .catch(err => console.error("❌ Employee fetch error:", err.response || err));
+      .catch((err) =>
+        console.error("❌ Employee fetch error:", err.response || err)
+      );
   }, [user]);
 
   /* ================= FETCH ATTENDANCE ================= */
   const fetchAttendanceLogs = async () => {
     if (!employee?.employee_id) return;
+
     try {
       const res = await axios.get(`${API_BASE}/attendance`);
+
       const logs = res.data.filter(
-        a => Number(a.employee_id) === Number(employee.employee_id)
+        (a) => Number(a.employee_id) === Number(employee.employee_id)
       );
+
       setAttendanceLogs(logs);
 
       // Find today's record
       const today = new Date().toISOString().split("T")[0];
-      let todayRecord = logs.find(log => log.date?.startsWith(today));
+      let todayRecord = logs.find((log) =>
+        log.date?.startsWith(today)
+      );
 
-      // If no record, create one automatically with pending status
+      // If no record, create one
       if (!todayRecord) {
         const createRes = await axios.post(`${API_BASE}/attendance`, {
           employee_id: employee.employee_id,
           fullname: employee.name,
           date: today,
-          status: "pending", // default pending
         });
         todayRecord = createRes.data;
       }
 
       setTodayAttendance(todayRecord);
     } catch (err) {
-      console.error("❌ Attendance fetch/create error:", err.response || err);
+      console.error(
+        "❌ Attendance fetch/create error:",
+        err.response || err
+      );
     }
   };
 
@@ -90,19 +101,18 @@ function EmployeePortal() {
     }
 
     try {
-      const timeString = currentTime.toLocaleTimeString("en-GB"); // HH:MM:SS
+      const timeString = currentTime.toLocaleTimeString("en-GB");
 
-      // Submit time-in with pending status
-      const res = await axios.put(
+      await axios.put(
         `${API_BASE}/attendance/${todayAttendance.attendance_id}/time-in`,
-        { time_in: timeString, status: "pending" }
+        { time_in: timeString }
       );
 
-      setStatusMessage("🟡 Time-in submitted for approval.");
+      setStatusMessage("🟢 Time-in recorded.");
       fetchAttendanceLogs();
     } catch (err) {
       console.error("Time-in error:", err.response || err);
-      setStatusMessage("❌ Failed to submit time-in.");
+      setStatusMessage("❌ Failed to time-in.");
     }
   };
 
@@ -115,31 +125,32 @@ function EmployeePortal() {
 
     try {
       const timeOutString = currentTime.toLocaleTimeString("en-GB");
-
-      // Calculate working hours if time_in exists
       let workingHours = 0;
+
       if (todayAttendance.time_in) {
         const [h, m, s] = todayAttendance.time_in.split(":").map(Number);
-        const timeInSec = h * 3600 + m * 60 + s;
-
         const [oh, om, os] = timeOutString.split(":").map(Number);
+
+        const timeInSec = h * 3600 + m * 60 + s;
         const timeOutSec = oh * 3600 + om * 60 + os;
 
         workingHours = Math.max(0, (timeOutSec - timeInSec) / 3600);
-        workingHours = Math.round(workingHours * 100) / 100; // 2 decimals
+        workingHours = Math.round(workingHours * 100) / 100;
       }
 
-      // Submit time-out with pending status
-      const res = await axios.put(
-        `${API_BASE}/attendance/${todayAttendance.attendance_id}/time-out`,
-        { time_out: timeOutString, working_hours: workingHours, status: "pending" }
+      await axios.put(
+        `${API_BASE}/attendance/${todayAttendance.attendance_id}`,
+        {
+          time_out: timeOutString,
+          working_hours: workingHours,
+        }
       );
 
-      setStatusMessage("🟡 Time-out submitted for approval.");
+      setStatusMessage("🔴 Time-out recorded.");
       fetchAttendanceLogs();
     } catch (err) {
       console.error("Time-out error:", err.response || err);
-      setStatusMessage("❌ Failed to submit time-out.");
+      setStatusMessage("❌ Failed to time-out.");
     }
   };
 
@@ -186,8 +197,12 @@ function EmployeePortal() {
       </div>
 
       <div style={{ marginTop: 30, textAlign: "center" }}>
-        <button onClick={handleTimeIn} className="in-button">🕒 Time In</button>
-        <button onClick={handleTimeOut} className="out-button">🏁 Time Out</button>
+        <button onClick={handleTimeIn} className="in-button">
+          🕒 Time In
+        </button>
+        <button onClick={handleTimeOut} className="out-button">
+          🏁 Time Out
+        </button>
         <p>{statusMessage}</p>
       </div>
 
@@ -207,13 +222,13 @@ function EmployeePortal() {
             <tbody>
               {attendanceLogs.map((log, i) => (
                 <tr key={i}>
-                  <td>{log.date ? new Date(log.date).toLocaleDateString() : "-"}</td>
-                  <td>{log.time_in || "-"}</td>
                   <td>
-                    {log.status === "approved" && "🟢 Approved"}
-                    {log.status === "pending" && "🟡 Pending"}
-                    {log.status === "rejected" && "🔴 Rejected"}
+                    {log.date
+                      ? new Date(log.date).toLocaleDateString()
+                      : "-"}
                   </td>
+                  <td>{log.time_in || "-"}</td>
+                  <td>{log.status || "-"}</td>
                   <td>{log.time_out || "-"}</td>
                   <td>{log.working_hours || "-"}</td>
                 </tr>
